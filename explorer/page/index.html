@@ -1278,8 +1278,9 @@ html.map-standalone .ov-about{margin-top:auto;padding:.1rem .9rem .2rem;border-t
 .ov-body{padding:.7rem .9rem 1rem}
 .ov-group{font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:.2rem 0 .4rem}
 .ov-list{list-style:none;margin:0 0 .6rem;padding:0}
-/* County filter of a layer group (Health locations): one county for every layer of the group */
-.ov-filter{border:1px solid var(--grey-border);border-radius:10px;background:var(--grey-panel);padding:.55rem .7rem .6rem;margin:0 0 .55rem}
+/* County filter in a layer's settings card (layers whose features lie in more than one county) */
+.ov-filter{border:1px solid var(--grey-border);border-radius:8px;background:var(--grey-panel);padding:.5rem .6rem .55rem;margin:0}
+.ov-filter[hidden]{display:none}
 .ov-filter.on{border-color:var(--teal);background:rgba(14,140,138,.06)}
 .ov-filter-lbl{display:flex;align-items:center;gap:.35rem;margin:0 0 .3rem;font-size:.64rem;font-weight:800;letter-spacing:.06em;
   text-transform:uppercase;color:var(--navy)}
@@ -9894,7 +9895,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
           "does not establish HSE publication or endorsement. Its compilation history, geocoding method and positional accuracy are not documented.",
           "The points were published in Irish Transverse Mercator (EPSG:2157) and downloaded in WGS&nbsp;84. To keep the layer small, " +
           "only <b>Service name</b> is kept here; the source also holds a county label, an alternative name and an address. " +
-          "Use <b>Filter by county</b> above the layer list to show the centres of one county.",
+          "Use <b>Filter by county</b> in the layer settings to show the centres of one county.",
         ],
         facts: [
           ["Features", "813 points (808 distinct locations)"],
@@ -10047,6 +10048,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
     });
   }
   function wireItem(s, li){
+    mountFilter(s);
     li.querySelector("[data-open]")?.addEventListener("click", () => setActive(s));
     wireCard(s);
     if (s.on) setActive(states.find(t => t.cfg.id === activeId && t.on) || s);
@@ -10082,9 +10084,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
       const h = document.createElement("p"); h.className = "ov-group"; h.textContent = g;
       const ul = document.createElement("ul"); ul.className = "ov-list";
       states.filter(s => s.cfg.group === g).forEach(s => ul.appendChild(itemEl(s)));
-      listEl.append(h);
-      if (states.some(s => s.cfg.group === g && isFeat(s) && s.meta)) listEl.append(countyFilterEl());
-      listEl.append(ul);
+      listEl.append(h, ul);
     });
   }
 
@@ -10310,12 +10310,13 @@ if (MAP_STANDALONE) (function overlayLayers(){
     });
   }
   function apply(s, reclassify){
-    const sym = s.sym, vals = s.data.values[sym.field] || [];
+    const sym = s.sym, cof = areaOf(s), ci = s.county ? s.county.i : -1;
+    const all = s.data.values[sym.field] || [], vals = cof ? all.map((v, i) => cof[i] === ci ? v : null) : all;
     if (reclassify || !s.cls) s.cls = classify(vals, sym.classes, sym.method);
     const colours = rampColours(s, s.cls.k), op = sym.opacity / 100;
     const add = [], drop = [];
     s.lines.forEach((pl, i) => {
-      const v = vals[i], show = v != null || sym.nodata;
+      const v = vals[i], show = (v != null || sym.nodata) && (!cof || cof[i] === ci);
       if (show) pl.setStyle(v == null
         ? { color: NODATA, weight: Math.max(1, sym.width * .6), opacity: op * .7 }
         : { color: colours[classOf(s.cls.breaks, v)], weight: sym.width, opacity: op });
@@ -10343,6 +10344,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
     else if (activeId === s.cfg.id) setActive([...states].reverse().find(t => t.on && t !== s) || null);
     else setActive(states.find(t => t.cfg.id === activeId) || null);
     if (!on){
+      syncOutlines();
       if (s.group) map.removeLayer(s.group);
       if (s.legendCtrl){ s.legendCtrl.remove(); s.legendCtrl = null; }
       status(s, "");
@@ -10369,9 +10371,11 @@ if (MAP_STANDALONE) (function overlayLayers(){
       return;
     }
     addMapLegend(s);
+    prepareFilter(s);
+    syncOutlines();
     if (!s.fitted){                                     // a chosen county keeps the map on that county
       const b = s.data.bbox;
-      if (!(isFeat(s) && county)) map.flyToBounds([[b[0], b[1]], [b[2], b[3]]], { padding: [20, 20], duration: .8 });
+      if (!s.county) map.flyToBounds([[b[0], b[1]], [b[2], b[3]]], { padding: [20, 20], duration: .8 });
       s.fitted = true;
     }
   }
@@ -10380,7 +10384,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
   const range = (br, i) => `${fmtVal(br[i])} – ${fmtVal(br[i + 1])}`;
   function legendParts(s, colours){
     const f = s.data.fields[s.sym.field] || { label: s.sym.field, unit: "" };
-    const c = s.cls, noData = s.data.n - c.n, excluded = s.data.errors[s.sym.field]?.size || 0;
+    const c = s.cls, noData = areaCount(s) - c.n, excluded = s.data.errors[s.sym.field]?.size || 0;
     const rows = c.breaks.slice(0, -1).map((_, i) => ({ colour: colours[i], text: range(c.breaks, i), n: c.counts[i] }));
     return { f, rows, noData, excluded };
   }
@@ -10410,7 +10414,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
       const div = ctrl.getContainer(); if (!div) return;
       if (isFeat(st)){                                   // point / polygon layer: shown categories only
         div.innerHTML = `<p class="ov-legend-h">${esc(st.cfg.name)}${st.sym.mode === "unique" ? `: ${esc(f.label)}` : ""}${
-            county ? ` · County ${esc(county.name)}` : ""}</p>
+            st.county ? ` · County ${esc(st.county.name)}` : ""}</p>
           <ul>${rows.filter(r => r.on).slice(0, 8).map(r => `<li>${swatch(st, r.colour)}${esc(r.label)}</li>`).join("")}
           ${rows.filter(r => r.on).length > 8 ? `<li>… ${rows.filter(r => r.on).length - 8} more (see Layer settings)</li>` : ""}</ul>`;
         return;
@@ -10636,7 +10640,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
     const cof = areaOf(s);
     if (!cof) return order;
     const col = s.data.attrs[s.sym.field], n = new Map();          // a county: its own counts, empty classes left out
-    for (let i = 0; i < cof.length; i++) if (cof[i] === county.i){
+    for (let i = 0; i < cof.length; i++) if (cof[i] === s.county.i){
       const a = col[i], key = a == null || a < 0 ? -1 : a;
       n.set(key, (n.get(key) || 0) + 1);
     }
@@ -10649,7 +10653,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
     const byIdx = new Map(s.cats.map(c => [c.i, c]));
     const hidden = new Set(sym.hidden);
     const col = unique ? d.attrs[sym.field] : null;
-    const cof = areaOf(s), ci = county ? county.i : -1;
+    const cof = areaOf(s), ci = s.county ? s.county.i : -1;
     const add = [], drop = [];
     s.lines.forEach((ly, i) => {
       let colour = sym.colour, show = !cof || cof[i] === ci;
@@ -10678,7 +10682,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
     if (!s.data) return;
     const sym = s.sym, hidden = new Set(sym.hidden), unique = sym.mode === "unique";
     const f = s.data.fields[sym.field] || { label: sym.field };
-    const total = areaCount(s), where = county ? ` in County ${county.name}` : "";
+    const county = s.county, total = areaCount(s), where = county ? ` in County ${county.name}` : "";
     const rows = unique ? (s.cats || featCategories(s)).map(c => ({ ...c, on: !hidden.has(c.key) }))
       : [{ key: "*", label: `All features${where}`, n: total, colour: sym.colour, on: true }];
     const el = s.symEl?.querySelector(".ov-legend");
@@ -10697,13 +10701,14 @@ if (MAP_STANDALONE) (function overlayLayers(){
   }
 
   // =====================================================================================
-  // ---- County filter (Health locations): choosing a county shows, in every health layer, only
-  //      the features inside it, draws the county outline and zooms to it. Each feature is given
-  //      to one county, once per layer: the county that contains its point (an outline or a line
-  //      by the centre of its vertices); a feature just off the simplified coastline goes to the
-  //      nearest county, so every feature belongs to exactly one county. ----
+  // ---- County filter, per layer, in its settings card: shown for a vector layer whose features lie
+  //      in more than one county. Choosing a county shows only that layer's features inside it, draws
+  //      the county outline and zooms to it. Each feature is given to one county: the county that
+  //      contains its point (an outline or a line by the centre of its vertices); a feature just off
+  //      the simplified coastline goes to the nearest county. ----
   // =====================================================================================
-  let counties = null, countiesReq = null, county = null, countyLayer = null;
+  let counties = null, countiesReq = null;
+  const outlines = new Map();                                      // county name -> its outline on the map
   map.createPane("ovCountyPane").style.zIndex = 445;                // just below the health layers
   map.getPane("ovCountyPane").style.pointerEvents = "none";
   const ringBox = r => r.reduce((b, [y, x]) => [Math.min(b[0], y), Math.min(b[1], x), Math.max(b[2], y), Math.max(b[3], x)],
@@ -10742,87 +10747,110 @@ if (MAP_STANDALONE) (function overlayLayers(){
     }
     return best;
   }
-  function repPoint(d, i){                                         // the point a feature is placed by
-    const g = d.geoms[i], t = gtypeOf(d, i);
-    if (t === 1) return g;
-    const ring = t === 2 ? g[0] : g[0] && g[0][0];
+  function repPoint(s, i){                                         // the point a feature is placed by
+    const d = s.data;
+    let ring;
+    if (d.latlngs){ const parts = d.latlngs[i]; ring = parts && parts[Math.floor(parts.length / 2)]; }   // roads
+    else {
+      const g = d.geoms[i], t = gtypeOf(d, i);
+      if (t === 1) return g;
+      ring = t === 2 ? g[0] : g[0] && g[0][0];
+    }
     if (!ring || !ring.length) return null;
     let y = 0, x = 0;
     ring.forEach(p => { y += p[0]; x += p[1]; });
     return [y / ring.length, x / ring.length];
   }
-  // Per layer: the county index of every feature (computed when a county is first chosen)
-  function areaOf(s){
-    if (!county || !counties || !s.data) return null;
-    if (!s.countyOf){
-      const d = s.data, out = new Int16Array(d.n).fill(-1);
-      for (let i = 0; i < d.n; i++){ const p = repPoint(d, i); if (p) out[i] = countyAt(p[0], p[1]); }
-      s.countyOf = out;
+  // Per layer: the county index of every feature, and how many features each county has
+  function assignCounties(s){
+    if (s.countyOf || !counties || !s.data) return;
+    const n = s.data.n, out = new Int16Array(n).fill(-1), per = new Map();
+    for (let i = 0; i < n; i++){
+      const p = repPoint(s, i); if (!p) continue;
+      const c = out[i] = countyAt(p[0], p[1]);
+      per.set(c, (per.get(c) || 0) + 1);
     }
-    return s.countyOf;
+    s.countyOf = out;
+    s.countyCounts = counties.filter(c => per.has(c.i)).map(c => ({ c, n: per.get(c.i) }));
   }
+  const areaOf = s => s.county && s.countyOf ? s.countyOf : null;
   function areaCount(s){
     const cof = areaOf(s);
     if (!cof) return s.data.n;
     let n = 0;
-    for (let i = 0; i < cof.length; i++) if (cof[i] === county.i) n++;
+    for (let i = 0; i < cof.length; i++) if (cof[i] === s.county.i) n++;
     return n;
   }
-  const filterEls = new Set();
-  function countyFilterEl(){
+
+  // The filter block of a layer's settings card (right): hidden until the layer's data and the county
+  // list are loaded, and kept hidden for a layer whose features all lie in one county
+  function mountFilter(s){
+    const card = s.symEl, head = card && card.querySelector(".ov-card-h");
+    if (!head || card.querySelector(".ov-filter")) return;
+    const id = `ov-${s.cfg.id}-county`;
     const box = document.createElement("div");
-    box.className = "ov-filter" + (county ? " on" : "");
-    box.innerHTML = `<label class="ov-filter-lbl" for="ovCounty"><i class="bi bi-funnel-fill" aria-hidden="true"></i>Filter by county</label>
+    box.className = "ov-filter"; box.hidden = true;
+    box.innerHTML = `<label class="ov-filter-lbl" for="${id}"><i class="bi bi-funnel-fill" aria-hidden="true"></i>Filter by county</label>
       <div class="ov-filter-row">
-        <select class="form-select form-select-sm" id="ovCounty" aria-describedby="ovCountyNote" disabled>
-          <option value="">All counties (whole of Ireland)</option></select>
+        <select class="form-select form-select-sm" id="${id}" aria-describedby="${id}-note"></select>
         <button type="button" class="ov-filter-clear" hidden title="Show every county again"><i class="bi bi-x-lg" aria-hidden="true"></i>Clear</button>
       </div>
-      <p class="ov-note" id="ovCountyNote" aria-live="polite">Loading the county list…</p>`;
-    const sel = box.querySelector("select"), clear = box.querySelector(".ov-filter-clear"), note = box.querySelector(".ov-note");
-    box._sync = () => {
-      box.classList.toggle("on", !!county);
-      sel.value = county ? county.name : "";
-      clear.hidden = !county;
-      note.classList.remove("err");
-      note.textContent = county
-        ? `Showing only the health locations in County ${county.name}, in every layer of this group.`
-        : "Choose a county to show only its health locations, in every layer of this group.";
-    };
-    loadCountyList().then(list => {
-      list.forEach(c => sel.add(new Option(`County ${c.name}`, c.name)));
-      sel.disabled = false;
-      box._sync();
-    }).catch(err => {
-      note.classList.add("err");
-      note.innerHTML = `The county list could not be loaded (${esc(err.message)}). <button type="button" class="ov-back">Try again</button>`;
-      note.querySelector("button").addEventListener("click", () => box.replaceWith(countyFilterEl()));
-    });
-    sel.addEventListener("change", () => setCounty(sel.value));
-    clear.addEventListener("click", () => { setCounty(""); sel.focus(); });
-    filterEls.forEach(el => { if (!el.isConnected) filterEls.delete(el); });
-    filterEls.add(box);
-    return box;
+      <p class="ov-note" id="${id}-note" aria-live="polite"></p>`;
+    head.after(box);
+    const sel = box.querySelector("select");
+    sel.addEventListener("change", e => { e.stopPropagation(); setCounty(s, sel.value); });
+    sel.addEventListener("input", e => e.stopPropagation());       // not a symbology change
+    box.querySelector(".ov-filter-clear").addEventListener("click", () => { setCounty(s, ""); sel.focus(); });
+    prepareFilter(s);
   }
-  function setCounty(name){
-    const c = name && counties ? counties.find(x => x.name === name) : null;
-    county = c || null;
-    if (countyLayer){ map.removeLayer(countyLayer); countyLayer = null; }
-    if (county){
-      const polys = county.rings.map(r => [r]);                   // separate islands, not holes
-      countyLayer = L.layerGroup([
+  function prepareFilter(s){
+    const box = s.symEl && s.symEl.querySelector(".ov-filter");
+    if (!box || !s.data) return;
+    loadCountyList().then(() => {
+      assignCounties(s);
+      const list = s.countyCounts || [];
+      box.hidden = list.length < 2;
+      if (box.hidden){ if (s.county) setCounty(s, ""); return; }
+      const sel = box.querySelector("select");
+      if (sel.options.length !== list.length + 1){
+        sel.innerHTML = `<option value="">All counties (${s.data.n.toLocaleString("en-IE")})</option>` +
+          list.map(({ c, n }) => `<option value="${esc(c.name)}">County ${esc(c.name)} (${n.toLocaleString("en-IE")})</option>`).join("");
+      }
+      syncFilter(s);
+    }).catch(() => { box.hidden = true; });                         // no county list: no filter
+  }
+  function syncFilter(s){
+    const box = s.symEl && s.symEl.querySelector(".ov-filter"); if (!box) return;
+    const c = s.county, nC = (s.countyCounts || []).length;
+    box.classList.toggle("on", !!c);
+    box.querySelector("select").value = c ? c.name : "";
+    box.querySelector(".ov-filter-clear").hidden = !c;
+    box.querySelector(".ov-note").textContent = c
+      ? `Showing only the features of this layer in County ${c.name}.`
+      : `This layer has features in ${nC} counties. Choose one to show only its features.`;
+  }
+  function setCounty(s, name){
+    s.county = (name && counties && counties.find(x => x.name === name)) || null;
+    syncFilter(s);
+    syncOutlines();
+    if (s.county){
+      const [s0, w0, n0, e0] = s.county.bbox;
+      map.flyToBounds([[s0, w0], [n0, e0]], { padding: [24, 24], duration: .8 });
+    }
+    if (s.on && s.lines) schedule(s, true);
+  }
+  // One outline per county chosen by a shown layer (two layers on the same county share it)
+  function syncOutlines(){
+    const want = new Set(states.filter(t => t.on && t.county).map(t => t.county.name));
+    outlines.forEach((ly, name) => { if (!want.has(name)){ map.removeLayer(ly); outlines.delete(name); } });
+    want.forEach(name => {
+      if (outlines.has(name)) return;
+      const polys = counties.find(c => c.name === name).rings.map(r => [r]);   // separate islands, not holes
+      outlines.set(name, L.layerGroup([
         L.polygon(polys, { pane: "ovCountyPane", interactive: false, color: "#ffffff", weight: 5, opacity: .85, fill: false }),
         L.polygon(polys, { pane: "ovCountyPane", interactive: false, color: "#102A43", weight: 2.2, dashArray: "6 4",
                            fillColor: "#0E8C8A", fillOpacity: .06 }),
-      ]).addTo(map);
-      const [s0, w0, n0, e0] = county.bbox;
-      map.flyToBounds([[s0, w0], [n0, e0]], { padding: [24, 24], duration: .8 });
-    }
-    filterEls.forEach(el => el._sync && el._sync());
-    states.forEach(s => {
-      if (!isFeat(s)) return;
-      if (s.on && s.lines) schedule(s, true);
-      else if (s.data) renderFeatLegend(s);
+      ]).addTo(map));
     });
   }
 
@@ -11708,7 +11736,7 @@ const DATA = [
     about: [
       "This layer contains 813 health-centre point records for the Republic of Ireland from the Health Centres ArcGIS service hosted by the Heritage Council. The source description identifies health centres staffed by GPs and nurses and links to the HSE list of health centres and to data.gov.ie. It is a Heritage Council-hosted layer that references the HSE, not a download from an HSE-controlled endpoint, so it does not establish direct HSE publication, ownership or endorsement.",
       "The points were published in Irish Transverse Mercator (EPSG:2157) and downloaded in WGS 84 on 20 November 2026; the layer was last edited on 28 January 2025. The 813 records have 808 distinct locations, and all 26 counties occur in the source County field. The compilation history, geocoding method and positional accuracy are not documented, and the collection is not an exhaustive facility register or a measure of capacity or availability.",
-      "On this platform the points are drawn in Spatial Mapping → Air Quality → Health locations → HSE health centres, as a single symbol with a choice of marker shape, size and outline. Only the service name is kept; the Filter by county list above the health layers shows the centres inside one county boundary instead of a county field."
+      "On this platform the points are drawn in Spatial Mapping → Air Quality → Health locations → HSE health centres, as a single symbol with a choice of marker shape, size and outline. Only the service name is kept; the Filter by county list in the layer settings shows the centres inside one county boundary instead of a county field."
     ],
     period: [2025, 2026], periodNote: "layer last edited 28 Jan 2025; snapshot 20 Nov 2026", frequency: "Static snapshot (update frequency not specified by the source)",
     spatial: "Republic of Ireland (26 counties)", resolution: "Point locations (813 records, 808 distinct)",
