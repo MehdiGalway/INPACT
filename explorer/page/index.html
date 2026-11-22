@@ -2294,7 +2294,7 @@ html.dc-lock{overflow:hidden}
 .ug-chap.active .n{background:var(--emerald);color:#fff}
 .ug-chap[disabled]{cursor:default;color:var(--text-muted)}
 .ug-chap:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
-/* Subsections listed under their chapter in the sidebar (3.1 Time series, 3.2 Compare) */
+/* Subsections listed under their chapter in the sidebar (3.1 Time series, 3.2 Compare, 3.3 Air Quality) */
 .ug-subchaps{list-style:none;margin:.15rem 0 .2rem 1.35rem;padding:0 0 0 .55rem;border-left:2px solid var(--grey-border);
   display:flex;flex-direction:column;gap:.1rem}
 .ug-subchap{display:flex;align-items:center;gap:.5rem;width:100%;text-align:left;border:0;background:transparent;
@@ -2442,8 +2442,9 @@ html.dc-lock{overflow:hidden}
   .ug-calc-row{grid-template-columns:minmax(0,1fr) 46px}
   .ug-calc-row label{grid-column:1 / -1}
 }
-/* User Guide, chapter 3: subsection switch (3.1 Time series / 3.2 Compare) and the "video coming soon" panel */
-.ug-subnav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin:0 0 1.3rem}
+/* User Guide, chapter 3: subsection switch (3.1 Time series / 3.2 Compare / 3.3 Air Quality) and the "video coming soon" panel */
+.ug-subnav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin:0 0 1.3rem}
+@media (max-width:900px){ .ug-subnav{grid-template-columns:1fr} }
 .ug-subtab{display:flex;align-items:center;gap:.75rem;text-align:left;border:1px solid var(--grey-border);background:#fff;
   border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:.8rem 1rem;font:inherit;color:inherit;cursor:pointer;
   transition:border-color .2s,background .2s,box-shadow .2s}
@@ -3943,7 +3944,7 @@ a.ug-go.alt:hover{color:var(--navy)}
 </div><!-- /tab-data -->
 
 <!-- ================= TAB: USER GUIDE (interactive guide; deep link #guide) =================
-     Chapter 1 is the Introduction, chapter 2 the Policy Timeline, chapter 3 Spatial Mapping (3.1 Time series, 3.2 Compare) and chapter 4 Trend &amp; Structural Breaks. To add a chapter,
+     Chapter 1 is the Introduction, chapter 2 the Policy Timeline, chapter 3 Spatial Mapping (3.1 Time series, 3.2 Compare, 3.3 Air Quality) and chapter 4 Trend &amp; Structural Breaks. To add a chapter,
      add a sidebar button with data-chapter="<id>" and a matching
      <section class="ug-chapter" data-chapter="<id>" hidden> in .ug-main. -->
 <div class="tab-pane" id="tab-guide" role="tabpanel" aria-label="User Guide">
@@ -3958,6 +3959,7 @@ a.ug-go.alt:hover{color:var(--navy)}
           <ul class="ug-subchaps" aria-label="Spatial Mapping subsections">
             <li><button type="button" class="ug-subchap" data-in="mapping" data-sub="timeseries"><span class="n">3.1</span>Time series</button></li>
             <li><button type="button" class="ug-subchap" data-in="mapping" data-sub="compare"><span class="n">3.2</span>Compare</button></li>
+            <li><button type="button" class="ug-subchap" data-in="mapping" data-sub="airquality"><span class="n">3.3</span>Air Quality</button></li>
           </ul></li>
         <li><button type="button" class="ug-chap" data-chapter="breaks"><span class="n">4</span>Trend &amp; Structural Breaks</button></li>
       </ul>
@@ -4378,17 +4380,18 @@ a.ug-go.alt:hover{color:var(--navy)}
       </div>
     </section>
 
-    <!-- ===== Chapter 3: Spatial Mapping (deep links #guide/mapping, #guide/mapping/compare) =====
-         Two subsections switched by the .ug-subnav buttons: 3.1 Time series, 3.2 Compare. -->
+    <!-- ===== Chapter 3: Spatial Mapping (deep links #guide/mapping, #guide/mapping/compare, #guide/mapping/airquality) =====
+         Three subsections switched by the .ug-subnav buttons: 3.1 Time series, 3.2 Compare, 3.3 Air Quality. -->
     <section class="ug-chapter" data-chapter="mapping" aria-labelledby="ugMapTitle" hidden>
 
       <div class="ug-hero">
         <div class="eyebrow">User Guide &middot; Chapter 3 &middot; Spatial Mapping</div>
         <h2 id="ugMapTitle">Spatial Mapping: see where emissions come from, and how they change</h2>
-        <p>The Spatial Environmental Mapping workspace places gridded emission estimates for Ireland on a satellite base map. You can follow how emissions in one cell, a region or the whole country change over the years, or compare two layers of the same dataset. This chapter has two parts: <b>Time series</b> and <b>Compare</b>.</p>
+        <p>The Spatial Environmental Mapping workspace places gridded emission estimates for Ireland on a satellite base map. You can follow how emissions in one cell, a region or the whole country change over the years, or compare two layers of the same dataset, and add air quality and health location layers on top of the map. This chapter has three parts: <b>Time series</b>, <b>Compare</b> and <b>Air Quality</b>.</p>
         <div class="ug-meta">
           <span><i class="bi bi-play-circle"></i>Video tutorials</span>
           <span><i class="bi bi-stack"></i>3 emission datasets</span>
+          <span><i class="bi bi-wind"></i>4 air quality &amp; health layers</span>
           <span><i class="bi bi-calendar-range"></i>2000&ndash;2024</span>
           <span><i class="bi bi-download"></i>GeoTIFF, JPEG, PNG and CSV exports</span>
         </div>
@@ -4400,6 +4403,9 @@ a.ug-go.alt:hover{color:var(--navy)}
         </button>
         <button type="button" role="tab" class="ug-subtab" data-sub="compare" aria-selected="false" aria-controls="ugSubCmp">
           <span class="n">3.2</span><span class="t"><b>Compare</b><span>The difference between two layers (B &minus; A) on the map</span></span>
+        </button>
+        <button type="button" role="tab" class="ug-subtab" data-sub="airquality" aria-selected="false" aria-controls="ugSubAq">
+          <span class="n">3.3</span><span class="t"><b>Air Quality</b><span>Street-level air pollution and health locations, styled and filtered by county</span></span>
         </button>
       </div>
 
@@ -4805,9 +4811,196 @@ a.ug-go.alt:hover{color:var(--navy)}
           <span><b>Well done!</b> You can now map, filter, quantify and export the difference between two emission layers.</span>
           <span class="ug-actions"><button type="button" class="ug-go alt" data-subgo="timeseries"><i class="bi bi-arrow-left-circle"></i>3.1 Time series</button>
           <button type="button" class="ug-go" data-go="mapping"><i class="bi bi-globe-europe-africa"></i>Open Spatial Mapping</button>
-          <button type="button" class="ug-go ug-chap-next" data-next="breaks"><i class="bi bi-arrow-right-circle"></i>Chapter 4: Trend &amp; Structural Breaks</button></span>
+          <button type="button" class="ug-go" data-subgo="airquality"><i class="bi bi-arrow-right-circle"></i>3.3 Air Quality</button></span>
         </div>
       </div><!-- /3.2 -->
+
+      <!-- ---------- 3.3 Air Quality ---------- -->
+      <div class="ug-sub" data-sub="airquality" id="ugSubAq" role="tabpanel" hidden>
+
+        <div class="ug-video-card">
+          <div class="ug-video" data-yt="yVHg0S2j3yg" data-title="INPACT Explorer: Spatial Mapping Air Quality tutorial">
+            <button type="button" class="ug-poster" aria-label="Play the Spatial Mapping Air Quality video"
+                    style="background-image:url('https://i.ytimg.com/vi/yVHg0S2j3yg/hqdefault.jpg')">
+              <span class="ug-play" aria-hidden="true"><i class="bi bi-play-fill"></i></span>
+              <span class="ug-poster-lbl">Spatial Mapping: Air Quality</span>
+            </button>
+          </div>
+          <div class="ug-video-bar">
+            <div><div class="t">Watch: exploring air quality and health location layers</div><div class="s">Pause at any point and repeat the same steps in the workspace.</div></div>
+            <a class="ug-yt" href="https://youtu.be/yVHg0S2j3yg" target="_blank" rel="noopener"><i class="bi bi-youtube"></i>Watch on YouTube</a>
+          </div>
+        </div>
+
+        <!-- Key ideas -->
+        <div class="ug-card">
+          <h3 class="ug-card-title"><i class="bi bi-wind"></i>Three ideas behind the Air Quality layers</h3>
+          <div class="ug-ideas">
+            <div class="ug-idea"><b>Layers on top of the map.</b><span>Air Quality adds vector layers (roads, points and building outlines) above the satellite map and any emission layer, so you can read air pollution and health services alongside greenhouse gas emissions.</span></div>
+            <div class="ug-idea"><b>Each layer has its own settings.</b><span>Every ticked layer gets a settings card on the right: what is shown, colours, classes, symbols, opacity and a county filter. Your choices are remembered in this browser.</span></div>
+            <div class="ug-idea"><b>Know the source before you interpret.</b><span>Each layer comes from a different provider, period and method. <b>About this dataset</b> explains what a layer measures, where it comes from and what it cannot tell you.</span></div>
+          </div>
+        </div>
+
+        <div class="ug-steps-head">
+          <h3>In this tutorial, you will learn how to&hellip;</h3>
+          <p>Open a step, try it in the workspace, and tick it off when you are done.</p>
+        </div>
+
+        <div class="ug-steps">
+
+          <!-- 1. Open Air Quality -->
+          <div class="ug-step" data-step="sm-aq-open">
+            <button type="button" class="ug-step-head" aria-expanded="false" aria-controls="ugA1">
+              <span class="ug-step-num">1</span><i class="bi bi-wind ug-step-ic" aria-hidden="true"></i>
+              <span class="ug-step-txt"><b>Open the Air Quality view</b><span>One button switches the panels to the overlay layers.</span></span>
+              <i class="bi bi-chevron-down ug-chev" aria-hidden="true"></i>
+            </button>
+            <div class="ug-step-body" id="ugA1">
+              <p>In <b>Spatial Mapping</b>, click <b>Air Quality</b> in the toolbar above the map. The workspace rearranges into three areas:</p>
+              <ul class="ug-list">
+                <li><b>Layer Overlay</b> (left): the list of layers, grouped as <em>Air Quality</em> and <em>Health locations</em>.</li>
+                <li><b>The map</b> (centre): the ticked layers, each with its own legend in the bottom-right corner.</li>
+                <li><b>Layer settings</b> (right): a settings card for each ticked layer.</li>
+              </ul>
+              <p><b>Back to Raster Layer</b> (top of the left panel) or the <b>Raster Layer</b> button returns to the emission layers. Nothing is lost: your time series and comparisons are kept, and the ticked overlays stay on the map.</p>
+              <div class="ug-actions">
+                <button type="button" class="ug-go" data-go="mapping" data-mode="AirQuality"><i class="bi bi-box-arrow-up-right"></i>Open Air Quality</button>
+                <label class="ug-done"><input type="checkbox">I&rsquo;ve got this</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Choose layers -->
+          <div class="ug-step" data-step="sm-aq-layers">
+            <button type="button" class="ug-step-head" aria-expanded="false" aria-controls="ugA2">
+              <span class="ug-step-num">2</span><i class="bi bi-layers ug-step-ic" aria-hidden="true"></i>
+              <span class="ug-step-txt"><b>Choose the layers to show</b><span>Street-level air quality in Dublin and health locations across Ireland.</span></span>
+              <i class="bi bi-chevron-down ug-chev" aria-hidden="true"></i>
+            </button>
+            <div class="ug-step-body" id="ugA2">
+              <p>Tick a layer in <b>Layer Overlay</b> to draw it; untick it to remove it. The first time a layer is shown, the map zooms to its extent. Tap a layer to learn what it contains:</p>
+              <div class="ug-chips" role="group" aria-label="Air Quality layers">
+                <button type="button" class="ug-chip" aria-pressed="false" data-explain="Street-by-street air quality across Dublin City, measured by Google and Dublin City Council (Project Air View Dublin). An electric Street View car with Aclima sensors drove every street from May 2021 to August 2022, mostly Monday to Friday, 09:00&ndash;17:00, recording every second. The readings are averaged over 24,683 road segments of about 50&nbsp;m, for NO&#8322;, NO, O&#8323; and PM2.5 (&micro;g/m&sup3;) and CO and CO&#8322; (mg/m&sup3;)."><i class="bi bi-car-front"></i>Google Air View</button>
+                <button type="button" class="ug-chip" aria-pressed="false" data-explain="813 health centres staffed by GPs and nurses in all 26 counties, from the Health Centres layer hosted by the Heritage Council, which references the HSE list of health centres. Each point gives the service name."><i class="bi bi-hospital"></i>HSE health centres</button>
+                <button type="button" class="ug-chip" aria-pressed="false" data-explain="1,035 mapped building and site outlines of healthcare places from OpenStreetMap (extract of 20 November 2026), coloured by type of facility: pharmacy, doctors, dentist, clinic, hospital, nursing home and more. Outlines are small: zoom in to a town to see them."><i class="bi bi-building"></i>Health facility outlines (amenity)</button>
+                <button type="button" class="ug-chip" aria-pressed="false" data-explain="All 3,714 OpenStreetMap healthcare features as mapped (points, outlines and a few lines), with the type of facility, whether a pharmacy dispenses prescriptions, and whether it offers a drive-through."><i class="bi bi-capsule"></i>Health facilities (dispensing status)</button>
+              </div>
+              <div class="ug-explain" aria-live="polite">Select a layer above.</div>
+              <div class="ug-actions">
+                <button type="button" class="ug-go" data-go="mapping" data-mode="AirQuality"><i class="bi bi-box-arrow-up-right"></i>Try it in Air Quality</button>
+                <label class="ug-done"><input type="checkbox">I&rsquo;ve got this</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Active layer, About, popups -->
+          <div class="ug-step" data-step="sm-aq-about">
+            <button type="button" class="ug-step-head" aria-expanded="false" aria-controls="ugA3">
+              <span class="ug-step-num">3</span><i class="bi bi-info-circle ug-step-ic" aria-hidden="true"></i>
+              <span class="ug-step-txt"><b>Switch the active layer, read its details and click features</b><span>&raquo;, About this dataset and map popups.</span></span>
+              <i class="bi bi-chevron-down ug-chev" aria-hidden="true"></i>
+            </button>
+            <div class="ug-step-body" id="ugA3">
+              <ul class="ug-list">
+                <li><b>Active layer</b>: with several layers ticked, only the active layer&rsquo;s settings card is open; the others fold to their name. Click <b>&raquo;</b> next to a layer in the list, or click a card&rsquo;s header, to make that layer active.</li>
+                <li><b>About this dataset</b>: below the layer list, a summary of the active layer. <b>More details</b> adds its provider, period, coverage, licence, notes on interpretation, a citation and links to the original source.</li>
+                <li><b>Popups</b>: click a road, point or outline on the map to see its details, for example a road&rsquo;s pollutant value with the number of measurement points and drives behind it, or a health centre&rsquo;s service name.</li>
+              </ul>
+              <div class="ug-actions">
+                <button type="button" class="ug-go" data-go="mapping" data-mode="AirQuality"><i class="bi bi-box-arrow-up-right"></i>Try it in Air Quality</button>
+                <label class="ug-done"><input type="checkbox">I&rsquo;ve got this</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Google Air View settings -->
+          <div class="ug-step" data-step="sm-aq-roads">
+            <button type="button" class="ug-step-head" aria-expanded="false" aria-controls="ugA4">
+              <span class="ug-step-num">4</span><i class="bi bi-palette ug-step-ic" aria-hidden="true"></i>
+              <span class="ug-step-txt"><b>Style the Google Air View roads</b><span>Pollutant, colour ramp, classes and method.</span></span>
+              <i class="bi bi-chevron-down ug-chev" aria-hidden="true"></i>
+            </button>
+            <div class="ug-step-body" id="ugA4">
+              <p>In the <b>Google Air View</b> settings card:</p>
+              <ul class="ug-list">
+                <li><b>Pollutant</b>: the value that colours the roads (NO&#8322; by default).</li>
+                <li><b>Colour ramp</b> and <b>Reverse</b>: the palette from low to high values.</li>
+                <li><b>Classes</b>: how many colour bands (3 to 9). The legend lists each band&rsquo;s range and how many roads fall in it.</li>
+                <li><b>Line width</b>, <b>Opacity</b>, and <b>Show roads with no data</b> (in grey) when you also want to see the roads that were not measured.</li>
+              </ul>
+              <p>The <b>Method</b> decides where the class breaks fall. Tap a method to learn more:</p>
+              <div class="ug-chips" role="group" aria-label="Classification methods">
+                <button type="button" class="ug-chip" aria-pressed="false" data-explain="Splits the range from the lowest to the highest value into classes of equal width. Easy to read, but a few very high roads can leave most roads in the lowest classes."><i class="bi bi-distribute-horizontal"></i>Equal Interval</button>
+                <button type="button" class="ug-chip" aria-pressed="false" data-explain="The default. Puts about the same number of roads in each class, so the street-to-street differences across the city stand out."><i class="bi bi-bar-chart-steps"></i>Quantile</button>
+                <button type="button" class="ug-chip" aria-pressed="false" data-explain="Natural Breaks (Jenks) places the breaks where the values naturally group, keeping similar roads together and separating distinct groups."><i class="bi bi-diagram-3"></i>Natural Breaks (Jenks)</button>
+              </div>
+              <div class="ug-explain" aria-live="polite">Select a method above.</div>
+              <div class="ug-actions">
+                <button type="button" class="ug-go" data-go="mapping" data-mode="AirQuality"><i class="bi bi-box-arrow-up-right"></i>Try it in Air Quality</button>
+                <label class="ug-done"><input type="checkbox">I&rsquo;ve got this</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Health layer settings -->
+          <div class="ug-step" data-step="sm-aq-health">
+            <button type="button" class="ug-step-head" aria-expanded="false" aria-controls="ugA5">
+              <span class="ug-step-num">5</span><i class="bi bi-geo-alt ug-step-ic" aria-hidden="true"></i>
+              <span class="ug-step-txt"><b>Style the health location layers</b><span>One symbol, or a colour for each type of facility.</span></span>
+              <i class="bi bi-chevron-down ug-chev" aria-hidden="true"></i>
+            </button>
+            <div class="ug-step-body" id="ugA5">
+              <p>Each health layer&rsquo;s card starts with <b>Primary symbology</b>. Tap an option to learn more:</p>
+              <div class="ug-chips" role="group" aria-label="Primary symbology">
+                <button type="button" class="ug-chip" aria-pressed="false" data-explain="Draws every feature with one colour that you pick. Best for seeing where the locations are, for example all HSE health centres."><i class="bi bi-circle-fill"></i>Single Symbol</button>
+                <button type="button" class="ug-chip" aria-pressed="false" data-explain="Gives each value of a field its own colour, for example Amenity (pharmacy, doctors, hospital&hellip;) or Dispensing (yes / no). Choose the Field and a Colour scheme; the class list shows each value with its count. Untick a class to hide it, or use All / None."><i class="bi bi-palette2"></i>Unique Values</button>
+              </div>
+              <div class="ug-explain" aria-live="polite">Select an option above.</div>
+              <ul class="ug-list">
+                <li><b>Point symbol</b>: shape (circle, square, triangle or diamond), size, outline colour and outline width.</li>
+                <li><b>Polygon symbol</b> (outlines): fill opacity, outline width, and an outline colour that you set or that follows a darker shade of the fill.</li>
+                <li><b>Layer opacity</b>: lets the map and other layers show through.</li>
+              </ul>
+              <div class="ug-actions">
+                <button type="button" class="ug-go" data-go="mapping" data-mode="AirQuality"><i class="bi bi-box-arrow-up-right"></i>Try it in Air Quality</button>
+                <label class="ug-done"><input type="checkbox">I&rsquo;ve got this</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. County filter -->
+          <div class="ug-step" data-step="sm-aq-county">
+            <button type="button" class="ug-step-head" aria-expanded="false" aria-controls="ugA6">
+              <span class="ug-step-num">6</span><i class="bi bi-funnel ug-step-ic" aria-hidden="true"></i>
+              <span class="ug-step-txt"><b>Filter a layer by county</b><span>Show only the features of one county.</span></span>
+              <i class="bi bi-chevron-down ug-chev" aria-hidden="true"></i>
+            </button>
+            <div class="ug-step-body" id="ugA6">
+              <p><b>Filter by county</b> sits at the top of the settings card of every layer whose features lie in more than one county (the three health layers; Google Air View covers Dublin only).</p>
+              <ul class="ug-list">
+                <li>The list shows only the counties where the layer has features, with a count for each, for example <em>County Galway (59)</em>.</li>
+                <li>Choose a county: the layer shows only its features there, the county outline is drawn with a dashed line, and the map zooms to it. The counts in the card and the map legend follow the county.</li>
+                <li>Each layer has its own filter, so you can show HSE health centres in Galway and OpenStreetMap facilities in Cork at the same time.</li>
+                <li><b>Clear</b> shows the whole country again.</li>
+              </ul>
+              <div class="ug-actions">
+                <button type="button" class="ug-go" data-go="mapping" data-mode="AirQuality"><i class="bi bi-box-arrow-up-right"></i>Try it in Air Quality</button>
+                <label class="ug-done"><input type="checkbox">I&rsquo;ve got this</label>
+              </div>
+            </div>
+          </div>
+        </div><!-- /ug-steps -->
+
+        <div class="ug-note" style="margin-top:1.2rem"><i class="bi bi-exclamation-triangle"></i><span><b>Before you interpret these layers:</b> Google Air View values describe daytime, weekday conditions in 2021&ndash;2022, not 24-hour or annual averages, so they cannot be compared directly with legal limit values. The health layers show where services are mapped, not their opening hours, capacity or current availability; the HSE and OpenStreetMap layers are separate sources and are not matched.</span></div>
+
+        <div class="ug-next">
+          <span><b>Well done!</b> You can now show, style and filter the air quality and health location layers.</span>
+          <span class="ug-actions"><button type="button" class="ug-go alt" data-subgo="compare"><i class="bi bi-arrow-left-circle"></i>3.2 Compare</button>
+          <button type="button" class="ug-go" data-go="mapping" data-mode="AirQuality"><i class="bi bi-wind"></i>Open Air Quality</button>
+          <button type="button" class="ug-go ug-chap-next" data-next="breaks"><i class="bi bi-arrow-right-circle"></i>Chapter 4: Trend &amp; Structural Breaks</button></span>
+        </div>
+      </div><!-- /3.3 -->
     </section>
 
     <!-- ===================== CHAPTER 4: TREND & STRUCTURAL BREAKS ===================== -->
@@ -10898,7 +11091,7 @@ if (!MAP_STANDALONE && location.hash.startsWith("#mapping")) activateTab("mappin
 
 /* ---------------------- 9d. User Guide tab (interactive guide) ----------------------
  * Chapters (sidebar): 1 Introduction, 2 Policy Timeline, 3 Spatial Mapping (subsections 3.1 Time series,
- * 3.2 Compare); later ones are listed as "Soon".
+ * 3.2 Compare, 3.3 Air Quality); later ones are listed as "Soon".
  * Each chapter: a YouTube video loaded only on play, expandable steps whose buttons open (and
  * highlight) the part of the dashboard they describe, and a per-viewer progress bar.
  * Deep links: #guide (Introduction) and #guide/<chapter>, e.g. #guide/policy.
@@ -10962,6 +11155,9 @@ if (!MAP_STANDALONE && location.hash.startsWith("#mapping")) activateTab("mappin
     const btn = e.target.closest("[data-go],[data-pt]");
     if (!btn || btn.disabled || btn.classList.contains("ug-chip") && btn.hasAttribute("data-explain")) return;
     if (btn.hasAttribute("data-pt")) { ptOpen(PT_ROOT + btn.dataset.pt); return; }
+    // Spatial Mapping opens in the mode the step is about (data-mode="AirQuality"; Raster Layer otherwise)
+    if (btn.dataset.go === "mapping")
+      history.replaceState(null, "", location.pathname + location.search + "#mapping/" + (btn.dataset.mode || "RasterLayer"));
     activateTab(btn.dataset.go);
     const sel = btn.dataset.spot;
     if (!sel) return;
@@ -11034,7 +11230,7 @@ if (!MAP_STANDALONE && location.hash.startsWith("#mapping")) activateTab("mappin
   }));
   const fromHash = () => (location.hash.match(/^#guide\/([\w-]+)/) || [])[1] || "intro";
 
-  // ---- Subsections inside a chapter (chapter 3: 3.1 Time series, 3.2 Compare); deep link #guide/mapping/compare ----
+  // ---- Subsections inside a chapter (chapter 3: 3.1 Time series, 3.2 Compare, 3.3 Air Quality); deep links #guide/mapping/compare, #guide/mapping/airquality ----
   function showSub(key, updateHash){
     const sec = chapters.find(c => c.dataset.chapter === current);
     const subs = sec ? [...sec.querySelectorAll(".ug-sub")] : [];
