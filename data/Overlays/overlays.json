@@ -99,22 +99,15 @@
      "label": "Service name",
      "type": "text",
      "n": 813
-    },
-    {
-     "key": "county",
-     "label": "County",
-     "type": "category",
-     "n": 813,
-     "missing": 0
     }
    ],
-   "default_field": "county",
+   "default_field": "",
    "file": "hse_health_centres.json.gz",
-   "bytes": 11988
+   "bytes": 11293
   },
   {
    "id": "osm_health_polygons",
-   "name": "Health facility footprints",
+   "name": "Health facility outlines (amenity)",
    "group": "Health locations",
    "kind": "polygon",
    "description": "Mapped building and site outlines of hospitals, clinics, doctors, dentists and pharmacies.",
@@ -141,11 +134,11 @@
    ],
    "default_field": "amenity",
    "file": "osm_health_polygons.json.gz",
-   "bytes": 34988
+   "bytes": 34993
   },
   {
    "id": "osm_health_facilities",
-   "name": "Health facilities",
+   "name": "Health facilities (dispensing status)",
    "group": "Health locations",
    "kind": "mixed",
    "description": "Every selected OSM healthcare feature as mapped: points, building outlines and a few lines.",
@@ -188,7 +181,7 @@
    ],
    "default_field": "amenity",
    "file": "osm_health_facilities.json.gz",
-   "bytes": 56011
+   "bytes": 56038
   }
  ]
 }

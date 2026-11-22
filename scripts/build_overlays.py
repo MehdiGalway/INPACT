@@ -91,13 +91,13 @@ LAYERS = {
         "url": "https://www.arcgis.com/home/item.html?id=5993f5720d1a4fd6be1da191fd092445",
         "fields": [   # key, label, source column, type ("text": a name per feature; "category": a few values)
             ("service_name", "Service name", "Service_name", "text"),
-            ("county", "County", "County", "category"),
+            # County is not kept: the page filters every health layer by county boundary instead
         ],
-        "default_field": "county",
+        "default_field": "",
     },
     "osm_health_polygons": {
         "format": "gpkg", "source": HEALTH_DIR / "osm_health_facilities.gpkg", "table": "facility_polygons",
-        "name": "Health facility footprints",
+        "name": "Health facility outlines (amenity)",
         "group": "Health locations",
         "description": "Mapped building and site outlines of hospitals, clinics, doctors, dentists and pharmacies.",
         "credit": OSM_CREDIT,
@@ -107,7 +107,7 @@ LAYERS = {
     },
     "osm_health_facilities": {
         "format": "gpkg", "source": HEALTH_DIR / "osm_health_facilities.gpkg", "table": "facilities",
-        "name": "Health facilities",
+        "name": "Health facilities (dispensing status)",
         "group": "Health locations",
         "description": "Every selected OSM healthcare feature as mapped: points, building outlines and a few lines.",
         "credit": OSM_CREDIT,

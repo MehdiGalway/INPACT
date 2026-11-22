@@ -1278,6 +1278,20 @@ html.map-standalone .ov-about{margin-top:auto;padding:.1rem .9rem .2rem;border-t
 .ov-body{padding:.7rem .9rem 1rem}
 .ov-group{font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:.2rem 0 .4rem}
 .ov-list{list-style:none;margin:0 0 .6rem;padding:0}
+/* County filter of a layer group (Health locations): one county for every layer of the group */
+.ov-filter{border:1px solid var(--grey-border);border-radius:10px;background:var(--grey-panel);padding:.55rem .7rem .6rem;margin:0 0 .55rem}
+.ov-filter.on{border-color:var(--teal);background:rgba(14,140,138,.06)}
+.ov-filter-lbl{display:flex;align-items:center;gap:.35rem;margin:0 0 .3rem;font-size:.64rem;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--navy)}
+.ov-filter-lbl i{color:var(--teal);font-size:.8rem}
+.ov-filter-row{display:flex;gap:.4rem;align-items:center}
+.ov-filter-row select{flex:1 1 auto;min-width:0}
+.ov-filter-clear{flex:0 0 auto;border:1px solid var(--grey-border);border-radius:6px;background:#fff;color:var(--navy);
+  height:31px;padding:0 .55rem;font-size:.72rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.25rem}
+.ov-filter-clear:hover{border-color:var(--teal);color:var(--teal)}
+.ov-filter-clear[hidden]{display:none}
+.ov-filter .ov-note{margin-top:.35rem}
+.ov-filter .ov-note.err{color:#B03A2E}
 .ov-item{border:1px solid var(--grey-border);border-radius:10px;background:#fff;margin-bottom:.5rem;
   box-shadow:0 1px 2px rgba(16,42,67,.05)}
 .ov-item.on{border-color:#9FCFCE;box-shadow:0 0 0 2px rgba(14,140,138,.12)}
@@ -9870,7 +9884,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
     //      Unique Values on one of their category fields. Only the fields kept by the build are listed. ----
     { id: "hse_health_centres", type: "features", group: "Health locations", name: "HSE health centres",
       what: "Health centre", titleField: "service_name",
-      defaults: { ...FEAT_DEFAULTS, mode: "single", field: "county", colour: "#0E8C8A", shape: "circle", size: 9 },
+      defaults: { ...FEAT_DEFAULTS, mode: "single", field: "", colour: "#0E8C8A", shape: "circle", size: 9 },
       about: {
         lead: "<b>Health Centres &ndash; Republic of Ireland</b>: 813 health-centre locations from the <i>Health Centres</i> " +
               "ArcGIS layer hosted by the Heritage Council (HeritageMaps). Its description identifies health centres staffed by GPs " +
@@ -9879,11 +9893,12 @@ if (MAP_STANDALONE) (function overlayLayers(){
           "This is a Heritage Council-hosted layer that references the HSE, not a download from an HSE-controlled service, so it " +
           "does not establish HSE publication or endorsement. Its compilation history, geocoding method and positional accuracy are not documented.",
           "The points were published in Irish Transverse Mercator (EPSG:2157) and downloaded in WGS&nbsp;84. To keep the layer small, " +
-          "only <b>Service name</b> and <b>County</b> are kept here; the source also holds an alternative name and an address.",
+          "only <b>Service name</b> is kept here; the source also holds a county label, an alternative name and an address. " +
+          "Use <b>Filter by county</b> above the layer list to show the centres of one county.",
         ],
         facts: [
           ["Features", "813 points (808 distinct locations)"],
-          ["Fields shown", "Service name; County (all 26 counties)"],
+          ["Fields shown", "Service name"],
           ["Host", "Heritage Council (ArcGIS Online item 5993f572…), referencing the HSE"],
           ["Last edit", "28 January 2025 (layer edit date, not a survey date)"],
           ["Snapshot", "Downloaded 20 November 2026"],
@@ -9893,7 +9908,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
         notes: [
           "Not an exhaustive facility register or a measure of capacity, opening hours or current availability.",
           "Five records share exact coordinates with another (co-location or duplication); none were removed.",
-          "County is the source label and was not checked against the location.",
+          "The county filter uses the location of each point inside the county boundaries, not the source county label.",
           "This layer and the OpenStreetMap layers are separate sources: they are not matched or merged.",
         ],
         cite: "Heritage Council / HeritageMaps. Health Centres [hosted ArcGIS point layer, referencing HSE]. Item 5993f5720d1a4fd6be1da191fd092445, layer 0. Retrieved 20 November 2026.",
@@ -9903,12 +9918,12 @@ if (MAP_STANDALONE) (function overlayLayers(){
           ["bi-journal-text", "Catalogue entry (data.gov.ie)", "https://data.gov.ie/dataset/list-of-health-centres-in-ireland"],
         ],
       } },
-    { id: "osm_health_polygons", type: "features", group: "Health locations", name: "Health facility footprints",
+    { id: "osm_health_polygons", type: "features", group: "Health locations", name: "Health facility outlines (amenity)",
       what: "Facility outline",
       defaults: { ...FEAT_DEFAULTS, mode: "unique", field: "amenity", fillOpacity: 55, polyWidth: 1.5 },
       about: OSM_ABOUT("1,035 building and site outlines (1,033 polygons, 2 multipolygons)", "Amenity (missing on 27 outlines)",
         "Outlines may be whole campuses or single buildings, so they are not comparable units and are not legal boundaries.") },
-    { id: "osm_health_facilities", type: "features", group: "Health locations", name: "Health facilities",
+    { id: "osm_health_facilities", type: "features", group: "Health locations", name: "Health facilities (dispensing status)",
       what: "Health facility",
       defaults: { ...FEAT_DEFAULTS, mode: "unique", field: "amenity", shape: "circle", size: 8 },
       about: OSM_ABOUT("3,714 features as mapped: 2,674 points, 1,035 outlines and 5 lines",
@@ -10067,7 +10082,9 @@ if (MAP_STANDALONE) (function overlayLayers(){
       const h = document.createElement("p"); h.className = "ov-group"; h.textContent = g;
       const ul = document.createElement("ul"); ul.className = "ov-list";
       states.filter(s => s.cfg.group === g).forEach(s => ul.appendChild(itemEl(s)));
-      listEl.append(h, ul);
+      listEl.append(h);
+      if (states.some(s => s.cfg.group === g && isFeat(s) && s.meta)) listEl.append(countyFilterEl());
+      listEl.append(ul);
     });
   }
 
@@ -10352,9 +10369,9 @@ if (MAP_STANDALONE) (function overlayLayers(){
       return;
     }
     addMapLegend(s);
-    if (!s.fitted){
+    if (!s.fitted){                                     // a chosen county keeps the map on that county
       const b = s.data.bbox;
-      map.flyToBounds([[b[0], b[1]], [b[2], b[3]]], { padding: [20, 20], duration: .8 });
+      if (!(isFeat(s) && county)) map.flyToBounds([[b[0], b[1]], [b[2], b[3]]], { padding: [20, 20], duration: .8 });
       s.fitted = true;
     }
   }
@@ -10392,7 +10409,8 @@ if (MAP_STANDALONE) (function overlayLayers(){
     ctrl.update = (f, rows, st) => {
       const div = ctrl.getContainer(); if (!div) return;
       if (isFeat(st)){                                   // point / polygon layer: shown categories only
-        div.innerHTML = `<p class="ov-legend-h">${esc(st.cfg.name)}${st.sym.mode === "unique" ? `: ${esc(f.label)}` : ""}</p>
+        div.innerHTML = `<p class="ov-legend-h">${esc(st.cfg.name)}${st.sym.mode === "unique" ? `: ${esc(f.label)}` : ""}${
+            county ? ` · County ${esc(county.name)}` : ""}</p>
           <ul>${rows.filter(r => r.on).slice(0, 8).map(r => `<li>${swatch(st, r.colour)}${esc(r.label)}</li>`).join("")}
           ${rows.filter(r => r.on).length > 8 ? `<li>… ${rows.filter(r => r.on).length - 8} more (see Layer settings)</li>` : ""}</ul>`;
         return;
@@ -10613,9 +10631,16 @@ if (MAP_STANDALONE) (function overlayLayers(){
     if (!f || f.type !== "category") return [];
     const order = f.values.map((v, i) => ({ i, key: v, label: prettyValue(v), n: f.counts[i] }))
       .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
-    order.forEach((c, j) => { c.colour = schemeColour(s.sym.scheme, j); });
+    order.forEach((c, j) => { c.colour = schemeColour(s.sym.scheme, j); });   // national ranks: colours stay put across counties
     if (f.missing) order.push({ i: -1, key: "", label: "Not recorded", n: f.missing, colour: NODATA });
-    return order;
+    const cof = areaOf(s);
+    if (!cof) return order;
+    const col = s.data.attrs[s.sym.field], n = new Map();          // a county: its own counts, empty classes left out
+    for (let i = 0; i < cof.length; i++) if (cof[i] === county.i){
+      const a = col[i], key = a == null || a < 0 ? -1 : a;
+      n.set(key, (n.get(key) || 0) + 1);
+    }
+    return order.map(c => ({ ...c, n: n.get(c.i) || 0 })).filter(c => c.n > 0);
   }
 
   function applyFeat(s){
@@ -10624,10 +10649,11 @@ if (MAP_STANDALONE) (function overlayLayers(){
     const byIdx = new Map(s.cats.map(c => [c.i, c]));
     const hidden = new Set(sym.hidden);
     const col = unique ? d.attrs[sym.field] : null;
+    const cof = areaOf(s), ci = county ? county.i : -1;
     const add = [], drop = [];
     s.lines.forEach((ly, i) => {
-      let colour = sym.colour, show = true;
-      if (unique){
+      let colour = sym.colour, show = !cof || cof[i] === ci;
+      if (unique && show){
         const c = byIdx.get(col[i]); colour = c ? c.colour : NODATA;
         show = !hidden.has(c ? c.key : "");
       }
@@ -10652,19 +10678,152 @@ if (MAP_STANDALONE) (function overlayLayers(){
     if (!s.data) return;
     const sym = s.sym, hidden = new Set(sym.hidden), unique = sym.mode === "unique";
     const f = s.data.fields[sym.field] || { label: sym.field };
+    const total = areaCount(s), where = county ? ` in County ${county.name}` : "";
     const rows = unique ? (s.cats || featCategories(s)).map(c => ({ ...c, on: !hidden.has(c.key) }))
-      : [{ key: "*", label: `All features`, n: s.data.n, colour: sym.colour, on: true }];
+      : [{ key: "*", label: `All features${where}`, n: total, colour: sym.colour, on: true }];
     const el = s.symEl?.querySelector(".ov-legend");
     if (el){
       const shown = rows.filter(r => r.on).reduce((a, r) => a + r.n, 0);
+      const fmt = x => x.toLocaleString("en-IE");
       el.innerHTML = `<div class="ov-cats-tools"><p class="ov-legend-h">${unique ? `Classes · ${esc(f.label)}` : "Symbol"}</p>
           ${unique ? `<span><button type="button" data-act="all">All</button><button type="button" data-act="none">None</button></span>` : ""}</div>
         <ul class="ov-cats">${rows.map(r => `<li><label class="ov-cat${r.on ? "" : " off"}">${unique
             ? `<input type="checkbox" data-cat="${esc(r.key)}"${r.on ? " checked" : ""} aria-label="Show ${esc(r.label)}">` : "<span></span>"}
           ${swatch(s, r.colour)}<span>${esc(r.label)}</span><span class="n">${r.n.toLocaleString("en-IE")}</span></label></li>`).join("")}</ul>
-        ${unique ? `<p class="ov-note">${shown.toLocaleString("en-IE")} of ${s.data.n.toLocaleString("en-IE")} features shown.</p>` : ""}`;
+        ${unique ? `<p class="ov-note">${fmt(shown)} of ${fmt(total)} features shown${esc(where)}${county ? ` (${fmt(s.data.n)} in Ireland)` : ""}.</p>`
+          : county ? `<p class="ov-note">${fmt(total)} of ${fmt(s.data.n)} features are${esc(where)}.</p>` : ""}`;
     }
     if (s.legendCtrl) s.legendCtrl.update(f, rows, s);
+  }
+
+  // =====================================================================================
+  // ---- County filter (Health locations): choosing a county shows, in every health layer, only
+  //      the features inside it, draws the county outline and zooms to it. Each feature is given
+  //      to one county, once per layer: the county that contains its point (an outline or a line
+  //      by the centre of its vertices); a feature just off the simplified coastline goes to the
+  //      nearest county, so every feature belongs to exactly one county. ----
+  // =====================================================================================
+  let counties = null, countiesReq = null, county = null, countyLayer = null;
+  map.createPane("ovCountyPane").style.zIndex = 445;                // just below the health layers
+  map.getPane("ovCountyPane").style.pointerEvents = "none";
+  const ringBox = r => r.reduce((b, [y, x]) => [Math.min(b[0], y), Math.min(b[1], x), Math.max(b[2], y), Math.max(b[3], x)],
+    [Infinity, Infinity, -Infinity, -Infinity]);
+  function loadCountyList(){
+    if (!countiesReq) countiesReq = fetch("/api/map/counties/")
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(j => (counties = (j.counties || []).map((c, i) => ({ i, name: c.name, bbox: c.bbox, rings: c.rings, boxes: c.rings.map(ringBox) }))))
+      .catch(err => { countiesReq = null; throw err; });
+    return countiesReq;
+  }
+  function inRing(y, x, r){
+    let inside = false;
+    for (let a = 0, b = r.length - 1; a < r.length; b = a++){
+      const ya = r[a][0], xa = r[a][1], yb = r[b][0], xb = r[b][1];
+      if ((ya > y) !== (yb > y) && x < (xb - xa) * (y - ya) / (yb - ya) + xa) inside = !inside;
+    }
+    return inside;
+  }
+  function segDist2(y, x, p, q, kx){                               // squared distance, longitude scaled by cos(lat)
+    const px = (x - p[1]) * kx, py = y - p[0], dx = (q[1] - p[1]) * kx, dy = q[0] - p[0], L2 = dx * dx + dy * dy;
+    const t = L2 ? Math.max(0, Math.min(1, (px * dx + py * dy) / L2)) : 0;
+    const ex = px - t * dx, ey = py - t * dy;
+    return ex * ex + ey * ey;
+  }
+  function countyAt(y, x){
+    for (const c of counties) for (let k = 0; k < c.rings.length; k++){
+      const b = c.boxes[k];
+      if (y >= b[0] && y <= b[2] && x >= b[1] && x <= b[3] && inRing(y, x, c.rings[k])) return c.i;
+    }
+    let best = -1, bd = Infinity;                                  // off the coastline: the nearest county
+    const kx = Math.cos(y * Math.PI / 180);
+    for (const c of counties) for (const r of c.rings) for (let a = 0, b = r.length - 1; a < r.length; b = a++){
+      const dd = segDist2(y, x, r[b], r[a], kx);
+      if (dd < bd){ bd = dd; best = c.i; }
+    }
+    return best;
+  }
+  function repPoint(d, i){                                         // the point a feature is placed by
+    const g = d.geoms[i], t = gtypeOf(d, i);
+    if (t === 1) return g;
+    const ring = t === 2 ? g[0] : g[0] && g[0][0];
+    if (!ring || !ring.length) return null;
+    let y = 0, x = 0;
+    ring.forEach(p => { y += p[0]; x += p[1]; });
+    return [y / ring.length, x / ring.length];
+  }
+  // Per layer: the county index of every feature (computed when a county is first chosen)
+  function areaOf(s){
+    if (!county || !counties || !s.data) return null;
+    if (!s.countyOf){
+      const d = s.data, out = new Int16Array(d.n).fill(-1);
+      for (let i = 0; i < d.n; i++){ const p = repPoint(d, i); if (p) out[i] = countyAt(p[0], p[1]); }
+      s.countyOf = out;
+    }
+    return s.countyOf;
+  }
+  function areaCount(s){
+    const cof = areaOf(s);
+    if (!cof) return s.data.n;
+    let n = 0;
+    for (let i = 0; i < cof.length; i++) if (cof[i] === county.i) n++;
+    return n;
+  }
+  const filterEls = new Set();
+  function countyFilterEl(){
+    const box = document.createElement("div");
+    box.className = "ov-filter" + (county ? " on" : "");
+    box.innerHTML = `<label class="ov-filter-lbl" for="ovCounty"><i class="bi bi-funnel-fill" aria-hidden="true"></i>Filter by county</label>
+      <div class="ov-filter-row">
+        <select class="form-select form-select-sm" id="ovCounty" aria-describedby="ovCountyNote" disabled>
+          <option value="">All counties (whole of Ireland)</option></select>
+        <button type="button" class="ov-filter-clear" hidden title="Show every county again"><i class="bi bi-x-lg" aria-hidden="true"></i>Clear</button>
+      </div>
+      <p class="ov-note" id="ovCountyNote" aria-live="polite">Loading the county list…</p>`;
+    const sel = box.querySelector("select"), clear = box.querySelector(".ov-filter-clear"), note = box.querySelector(".ov-note");
+    box._sync = () => {
+      box.classList.toggle("on", !!county);
+      sel.value = county ? county.name : "";
+      clear.hidden = !county;
+      note.classList.remove("err");
+      note.textContent = county
+        ? `Showing only the health locations in County ${county.name}, in every layer of this group.`
+        : "Choose a county to show only its health locations, in every layer of this group.";
+    };
+    loadCountyList().then(list => {
+      list.forEach(c => sel.add(new Option(`County ${c.name}`, c.name)));
+      sel.disabled = false;
+      box._sync();
+    }).catch(err => {
+      note.classList.add("err");
+      note.innerHTML = `The county list could not be loaded (${esc(err.message)}). <button type="button" class="ov-back">Try again</button>`;
+      note.querySelector("button").addEventListener("click", () => box.replaceWith(countyFilterEl()));
+    });
+    sel.addEventListener("change", () => setCounty(sel.value));
+    clear.addEventListener("click", () => { setCounty(""); sel.focus(); });
+    filterEls.forEach(el => { if (!el.isConnected) filterEls.delete(el); });
+    filterEls.add(box);
+    return box;
+  }
+  function setCounty(name){
+    const c = name && counties ? counties.find(x => x.name === name) : null;
+    county = c || null;
+    if (countyLayer){ map.removeLayer(countyLayer); countyLayer = null; }
+    if (county){
+      const polys = county.rings.map(r => [r]);                   // separate islands, not holes
+      countyLayer = L.layerGroup([
+        L.polygon(polys, { pane: "ovCountyPane", interactive: false, color: "#ffffff", weight: 5, opacity: .85, fill: false }),
+        L.polygon(polys, { pane: "ovCountyPane", interactive: false, color: "#102A43", weight: 2.2, dashArray: "6 4",
+                           fillColor: "#0E8C8A", fillOpacity: .06 }),
+      ]).addTo(map);
+      const [s0, w0, n0, e0] = county.bbox;
+      map.flyToBounds([[s0, w0], [n0, e0]], { padding: [24, 24], duration: .8 });
+    }
+    filterEls.forEach(el => el._sync && el._sync());
+    states.forEach(s => {
+      if (!isFeat(s)) return;
+      if (s.on && s.lines) schedule(s, true);
+      else if (s.data) renderFeatLegend(s);
+    });
   }
 
   // Popup: name (when the layer has one), then every kept field
@@ -11545,20 +11704,20 @@ const DATA = [
     id: "hse-health-centres", cat: "health", type: "Vector layer", icon: "bi-hospital",
     title: "Health Centres – Republic of Ireland (hosted by the Heritage Council, referencing HSE)",
     provider: "Heritage Council / HeritageMaps (ArcGIS Online), referencing the Health Service Executive (HSE)",
-    summary: "813 health-centre locations in the Republic of Ireland (health centres staffed by GPs and nurses), with service name and county.",
+    summary: "813 health-centre locations in the Republic of Ireland (health centres staffed by GPs and nurses), with service name.",
     about: [
       "This layer contains 813 health-centre point records for the Republic of Ireland from the Health Centres ArcGIS service hosted by the Heritage Council. The source description identifies health centres staffed by GPs and nurses and links to the HSE list of health centres and to data.gov.ie. It is a Heritage Council-hosted layer that references the HSE, not a download from an HSE-controlled endpoint, so it does not establish direct HSE publication, ownership or endorsement.",
-      "The points were published in Irish Transverse Mercator (EPSG:2157) and downloaded in WGS 84 on 20 November 2026; the layer was last edited on 28 January 2025. The 813 records have 808 distinct locations, and all 26 counties occur in the County field. The compilation history, geocoding method and positional accuracy are not documented, and the collection is not an exhaustive facility register or a measure of capacity or availability.",
-      "On this platform the points are drawn in Spatial Mapping → Air Quality → Health locations → HSE health centres, as a single symbol or coloured by county, with a choice of marker shape, size and outline. Only the service name and county are kept, to keep the layer small."
+      "The points were published in Irish Transverse Mercator (EPSG:2157) and downloaded in WGS 84 on 20 November 2026; the layer was last edited on 28 January 2025. The 813 records have 808 distinct locations, and all 26 counties occur in the source County field. The compilation history, geocoding method and positional accuracy are not documented, and the collection is not an exhaustive facility register or a measure of capacity or availability.",
+      "On this platform the points are drawn in Spatial Mapping → Air Quality → Health locations → HSE health centres, as a single symbol with a choice of marker shape, size and outline. Only the service name is kept; the Filter by county list above the health layers shows the centres inside one county boundary instead of a county field."
     ],
     period: [2025, 2026], periodNote: "layer last edited 28 Jan 2025; snapshot 20 Nov 2026", frequency: "Static snapshot (update frequency not specified by the source)",
     spatial: "Republic of Ireland (26 counties)", resolution: "Point locations (813 records, 808 distinct)",
     crs: "EPSG:4326 (WGS 84); source EPSG:2157 (Irish Transverse Mercator)", units: "—", gases: [],
     format: "GeoPackage (points) → gzipped column JSON for the web map", licence: "Not established from the inspected source metadata: check reuse terms with the publisher",
     version: "Snapshot of 20 November 2026 (ArcGIS item 5993f5720d1a4fd6be1da191fd092445, layer 0)",
-    meta: [["Host", "Heritage_Council_Admin (ArcGIS Online), public query service"], ["Last edit", "28 January 2025 (layer edit date, not a field survey date)"], ["Quality checks", "No null or invalid geometries; no duplicate OBJECTIDs; 5 records share exact coordinates with another"], ["Processing here", "Only Service_name and County kept; built with scripts/build_overlays.py"]],
-    files: [["data/Overlays/hse_health_centres.json.gz", "Points, service name and county (gzipped, 12 kB)"], ["data/Overlays/overlays.json", "Catalogue of the overlay layers"]],
-    vars: [["Service_name", "Health-centre / service name as supplied by the hosted layer"], ["County", "Source county label (26 counties); not checked against the location"]],
+    meta: [["Host", "Heritage_Council_Admin (ArcGIS Online), public query service"], ["Last edit", "28 January 2025 (layer edit date, not a field survey date)"], ["Quality checks", "No null or invalid geometries; no duplicate OBJECTIDs; 5 records share exact coordinates with another"], ["Processing here", "Only Service_name kept (County dropped: the map filters by county boundary); built with scripts/build_overlays.py"]],
+    files: [["data/Overlays/hse_health_centres.json.gz", "Points and service name (gzipped, 11 kB)"], ["data/Overlays/overlays.json", "Catalogue of the overlay layers"]],
+    vars: [["Service_name", "Health-centre / service name as supplied by the hosted layer"]],
     notes: ["Not an exhaustive or verified facility register; opening hours, services and capacity need separate checks.", "No open-data licence is named in the source metadata: confirm reuse and redistribution terms with the publisher.", "Not matched to the OpenStreetMap health facilities: the two sources are kept separate."],
     usedIn: [["mapping", "Spatial Mapping — Air Quality: HSE health centres", "#mapping/AirQuality"]],
     citation: "Heritage Council / HeritageMaps. Health Centres [hosted ArcGIS point layer, referencing HSE]. Item 5993f5720d1a4fd6be1da191fd092445, layer 0. Retrieved 20 November 2026.",
@@ -11573,7 +11732,7 @@ const DATA = [
     about: [
       "This dataset contains 3,714 OpenStreetMap healthcare features in the Republic of Ireland (2,674 nodes, 1,001 ways and 39 relations), downloaded through the Overpass API from the OSM database of 20 November 2026, 12:42 UTC. A feature was selected if either its amenity tag is hospital, clinic, doctors, dentist, pharmacy or nursing_home, or its healthcare tag is hospital, clinic, health_centre, centre, doctor, dentist, pharmacy, nursing_home, hospice, physiotherapist, midwife or urgent_care. Tags are raw contributor values, not harmonised clinical categories.",
       "Outlines are mapped buildings or sites (whole campuses or single buildings), not catchment areas or legal boundaries, and not every facility has one. A site, a building and a point can describe the same facility, so counts are not counts of unique establishments. The data are contributed and maintained by volunteers: missing facilities, outdated names, inconsistent tags and uneven coverage are possible.",
-      "On this platform two layers are drawn in Spatial Mapping → Air Quality → Health locations: Health facility footprints (the 1,035 outlines, by amenity) and Health facilities (every feature as mapped, with amenity, dispensing and drive-through). Each can be shown as a single symbol or by unique values, with point and polygon symbol settings."
+      "On this platform two layers are drawn in Spatial Mapping → Air Quality → Health locations: Health facility outlines (amenity) (the 1,035 outlines, by amenity) and Health facilities (dispensing status) (every feature as mapped, with amenity, dispensing and drive-through). Each can be shown as a single symbol or by unique values, with point and polygon symbol settings, and filtered to one county."
     ],
     period: [2026, 2026], periodNote: "OSM database of 20 Nov 2026; a static extract", frequency: "Static snapshot (OSM is updated continuously)",
     spatial: "Republic of Ireland (ISO 3166-1 IE); Northern Ireland not included", resolution: "Points and building / site outlines",
@@ -11581,10 +11740,10 @@ const DATA = [
     format: "GeoPackage (points, polygons, lines) → gzipped column JSON for the web map", licence: "Open Database License (ODbL) 1.0 — © OpenStreetMap contributors",
     version: "Overpass extract, OSM base timestamp 2026-11-20 12:42:43 UTC (parsed with OSMnx 2.2.0)",
     meta: [["Elements", "2,674 nodes, 1,001 ways, 39 relations"], ["Geometry", "2,674 points, 1,033 polygons, 2 multipolygons, 5 lines"], ["Missing tags", "amenity missing on 182 features (27 outlines); name missing on 283"], ["Quality checks", "No null or invalid geometries; no duplicate (element, id) pairs"], ["Processing here", "Only amenity (outlines) and amenity, dispensing, drive_through (all features) kept; built with scripts/build_overlays.py"]],
-    files: [["data/Overlays/osm_health_polygons.json.gz", "Health facility footprints: outlines and amenity (gzipped, 35 kB)"], ["data/Overlays/osm_health_facilities.json.gz", "Health facilities: every feature as mapped with amenity, dispensing, drive-through (gzipped, 56 kB)"], ["data/Overlays/overlays.json", "Catalogue of the overlay layers"]],
+    files: [["data/Overlays/osm_health_polygons.json.gz", "Health facility outlines (amenity): outlines and amenity (gzipped, 35 kB)"], ["data/Overlays/osm_health_facilities.json.gz", "Health facilities (dispensing status): every feature as mapped with amenity, dispensing, drive-through (gzipped, 56 kB)"], ["data/Overlays/overlays.json", "Catalogue of the overlay layers"]],
     vars: [["amenity", "OSM amenity tag: pharmacy, doctors, dentist, clinic, hospital, nursing_home, …"], ["dispensing", "Pharmacy dispenses prescriptions: yes / no (mostly unrecorded)"], ["drive_through", "Drive-through service: yes / no (mostly unrecorded)"]],
-    notes: ["Do not add the footprint and facility layers together: they describe the same OSM features.", "Features with no amenity tag qualified through their healthcare tag and are shown as Not recorded.", "Not a measure of opening hours, capacity, eligibility or current availability.", "ODbL: attribute OpenStreetMap contributors and keep the licence with any derived data."],
-    usedIn: [["mapping", "Spatial Mapping — Air Quality: Health facilities and footprints", "#mapping/AirQuality"]],
+    notes: ["Do not add the outline and facility layers together: they describe the same OSM features.", "Features with no amenity tag qualified through their healthcare tag and are shown as Not recorded.", "Not a measure of opening hours, capacity, eligibility or current availability.", "ODbL: attribute OpenStreetMap contributors and keep the licence with any derived data."],
+    usedIn: [["mapping", "Spatial Mapping — Air Quality: Health facilities and facility outlines", "#mapping/AirQuality"]],
     citation: "OpenStreetMap contributors. Selected healthcare features, Republic of Ireland [OSM extract]. Database timestamp 20 November 2026, 12:42:43 UTC. Retrieved via Overpass API on 20 November 2026. Open Database License 1.0.",
     links: [["OpenStreetMap copyright and licence", "https://www.openstreetmap.org/copyright"], ["ODbL 1.0 licence text", "https://opendatacommons.org/licenses/odbl/1-0/"], ["OSM healthcare tag (wiki)", "https://wiki.openstreetmap.org/wiki/Key:healthcare"], ["Overpass API (wiki)", "https://wiki.openstreetmap.org/wiki/Overpass_API"]],
     keywords: "openstreetmap osm health healthcare hospital clinic doctors gp dentist pharmacy chemist nursing home hospice amenity dispensing drive through footprint building outline polygon overpass odbl"
