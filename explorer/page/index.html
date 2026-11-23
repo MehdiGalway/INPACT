@@ -1380,6 +1380,9 @@ html.map-standalone .ov-about{margin-top:auto;padding:.1rem .9rem .2rem;border-t
 .ov-swbtn{display:block;width:22px;height:22px;margin:-2px;padding:1px;border:1px solid transparent;border-radius:5px;background:none;cursor:pointer}
 .ov-swbtn:hover,.ov-swbtn:focus-visible,.ov-swbtn.open{border-color:var(--teal);background:#fff;box-shadow:0 0 0 2px rgba(14,140,138,.18);outline:0}
 .ov-swbtn .ov-swg{pointer-events:none}
+.ov-swbtn-line{display:flex;align-items:center;width:30px;height:18px;margin:-2px;padding:0 3px}
+.ov-swbtn-line .ov-sw{width:100%;height:6px;pointer-events:none}
+.ov-legend li:has(> .ov-swbtn-line){grid-template-columns:30px 1fr auto}
 .ov-cpop{position:fixed;z-index:5000;width:232px;padding:.6rem .65rem .65rem;background:#fff;border:1px solid var(--grey-border,#d5dbe0);
   border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.18);font-size:.72rem;color:var(--text-main,#1e2b33)}
 .ov-cpop[hidden]{display:none}
@@ -10176,6 +10179,9 @@ if (MAP_STANDALONE) (function overlayLayers(){
     out.classes = +out.classes; out.reverse = out.reverse === true; out.nodata = out.nodata !== false;
     out.width = Math.min(Math.max(+out.width || def.width, 1), 8);
     out.opacity = Math.min(Math.max(+out.opacity || def.opacity, 10), 100);
+    // Colours picked for single classes: { class index | "nodata": "#rrggbb" }
+    out.custom = out.custom && typeof out.custom === "object"
+      ? Object.fromEntries(Object.entries(out.custom).filter(([k, v]) => /^(\d+|nodata)$/.test(k) && HEX.test(v))) : {};
     return out;
   }
   const isFeat = s => s.cfg.type === "features";
@@ -10363,12 +10369,21 @@ if (MAP_STANDALONE) (function overlayLayers(){
       const k = e.target.dataset.k; if (!k) return;
       const t = e.target;
       s.sym[k] = t.type === "checkbox" ? t.checked : t.type === "range" || k === "classes" ? +t.value : t.value;
+      // A new ramp, its reverse or a new number of classes recolours every class (as in ArcGIS Pro);
+      // a new pollutant or method keeps the colours picked for each class position
+      if (k === "ramp" || k === "reverse" || k === "classes") s.sym.custom = s.sym.custom.nodata ? { nodata: s.sym.custom.nodata } : {};
+      if (colourPick.s === s && k !== "width" && k !== "opacity") colourPick.close();
       syncOutputs(s);
       save();
       schedule(s, k === "field" || k === "classes" || k === "method");
     };
     s.symEl.addEventListener("input", onInput);
     s.symEl.addEventListener("change", onInput);
+    s.symEl.addEventListener("click", e => {             // a class symbol in the legend: open the colour palette
+      const sw = e.target.closest("[data-catcol]"); if (!sw || !s.cls) return;
+      e.preventDefault(); e.stopPropagation();
+      colourPick.open(s, sw.dataset.catcol, sw);
+    });
     if (s.on && s.data) renderLegend(s);
     wireItem(s, li);
     return li;
@@ -10510,6 +10525,9 @@ if (MAP_STANDALONE) (function overlayLayers(){
   }
   const rampColours = (s, k) => k <= 1 ? [palette.seqColour(s.sym.ramp, .5, s.sym.reverse)]
     : Array.from({ length: k }, (_, i) => palette.seqColour(s.sym.ramp, i / (k - 1), s.sym.reverse));
+  // The ramp's colours with the ones picked for single classes (click a class symbol in the legend)
+  const classColours = (s, k) => rampColours(s, k).map((c, i) => s.sym.custom[i] || c);
+  const noDataColour = s => s.sym.custom.nodata || NODATA;
 
   // ---- Drawing: one canvas polyline per road; restyled in place (no rebuild) on every change ----
   function buildLines(s){
@@ -10528,12 +10546,12 @@ if (MAP_STANDALONE) (function overlayLayers(){
     const sym = s.sym, cof = areaOf(s), ci = s.county ? s.county.i : -1;
     const all = s.data.values[sym.field] || [], vals = cof ? all.map((v, i) => cof[i] === ci ? v : null) : all;
     if (reclassify || !s.cls) s.cls = classify(vals, sym.classes, sym.method);
-    const colours = rampColours(s, s.cls.k), op = sym.opacity / 100;
+    const colours = classColours(s, s.cls.k), op = sym.opacity / 100, nd = noDataColour(s);
     const add = [], drop = [];
     s.lines.forEach((pl, i) => {
       const v = vals[i], show = (v != null || sym.nodata) && (!cof || cof[i] === ci);
       if (show) pl.setStyle(v == null
-        ? { color: NODATA, weight: Math.max(1, sym.width * .6), opacity: op * .7 }
+        ? { color: nd, weight: Math.max(1, sym.width * .6), opacity: op * .7 }
         : { color: colours[classOf(s.cls.breaks, v)], weight: sym.width, opacity: op });
       if (show !== pl._ovIn){ (show ? add : drop).push(pl); pl._ovIn = show; }
     });
@@ -10605,13 +10623,17 @@ if (MAP_STANDALONE) (function overlayLayers(){
   }
   function renderLegend(s, colours){
     if (isFeat(s)) return renderFeatLegend(s);
-    colours = colours || rampColours(s, s.cls.k);
+    colours = colours || classColours(s, s.cls.k);
     const { f, rows, noData, excluded } = legendParts(s, colours);
     const el = s.symEl?.querySelector(".ov-legend");
+    const pick = (key, label, sw) => `<button type="button" class="ov-swbtn ov-swbtn-line" data-catcol="${key}" title="Change the colour of ${esc(label)}"
+      aria-label="Change the colour of ${esc(label)}" aria-haspopup="dialog">${sw}</button>`;
+    const nd = s.sym.custom.nodata ? ` style="background:${s.sym.custom.nodata}"` : "";
     if (el){
       el.innerHTML = `<p class="ov-legend-h">${esc(f.label)} (${esc(f.unit)}) · ${esc(METHODS[s.sym.method])}</p>
-        <ul>${rows.map(r => `<li><span class="ov-sw" style="background:${r.colour}"></span><span>${esc(r.text)}</span><span class="n">${r.n.toLocaleString("en-IE")}</span></li>`).join("")}
-        <li class="nodata"><span class="ov-sw"></span><span>No data${s.sym.nodata ? "" : " (hidden)"}</span><span class="n">${noData.toLocaleString("en-IE")}</span></li></ul>
+        <ul>${rows.map((r, i) => `<li>${pick(i, r.text, `<span class="ov-sw" style="background:${r.colour}"></span>`)}<span>${esc(r.text)}</span><span class="n">${r.n.toLocaleString("en-IE")}</span></li>`).join("")}
+        <li class="nodata">${pick("nodata", "No data", `<span class="ov-sw"${nd}></span>`)}<span>No data${s.sym.nodata ? "" : " (hidden)"}</span><span class="n">${noData.toLocaleString("en-IE")}</span></li></ul>
+        <p class="ov-note">Click a class symbol to change its colour.</p>
         ${rows.length < s.sym.classes && s.cls.n ? `<p class="ov-note">Only ${rows.length} distinct classes for this field (tied break values merged).</p>` : ""}
         ${excluded ? `<p class="ov-note">${excluded.toLocaleString("en-IE")} negative readings excluded as sensor errors (shown as no data).</p>` : ""}`;
     }
@@ -10636,7 +10658,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
       }
       div.innerHTML = `<p class="ov-legend-h">${esc(st.cfg.name)}: ${esc(f.label)} (${esc(f.unit)})</p>
         <ul>${rows.map(r => `<li><span class="ov-sw" style="background:${r.colour}"></span>${esc(r.text)}</li>`).join("")}
-        ${st.sym.nodata ? `<li class="nodata"><span class="ov-sw"></span>No data</li>` : ""}</ul>`;
+        ${st.sym.nodata ? `<li class="nodata"><span class="ov-sw"${st.sym.custom.nodata ? ` style="background:${st.sym.custom.nodata}"` : ""}></span>No data</li>` : ""}</ul>`;
     };
     ctrl.addTo(map);
     s.legendCtrl = ctrl;
@@ -10730,11 +10752,50 @@ if (MAP_STANDALONE) (function overlayLayers(){
     document.body.appendChild(el);
     const head = el.querySelector(".ov-cpop-h span"), sch = el.querySelector("[data-sch]"), schH = el.querySelector("[data-sch-h]");
     const nat = el.querySelector("input[type=color]"), hex = el.querySelector("input[type=text]"), reset = el.querySelector(".ov-cpop-reset");
-    const P = { s: null, key: null, anchor: null };
-    const cat = () => (P.s.cats || []).find(c => c.key === P.key);
-    const current = () => P.key === "*" ? P.s.sym.colour : (cat() || {}).colour || NODATA;
-    const baseOf = () => P.key === "*" ? ((P.s.cfg.defaults && P.s.cfg.defaults.colour) || FEAT_DEFAULTS.colour)
-      : (c => c ? (c.base || c.colour) : NODATA)(cat());
+    const P = { s: null, key: null, anchor: null, a: null };
+    const toHex = c => {                                   // ramp colours come as "rgb(r,g,b)"
+      if (HEX.test(c)) return c.toUpperCase();
+      const m = String(c).match(/\d+(\.\d+)?/g);
+      return m && m.length >= 3 ? "#" + m.slice(0, 3).map(v => Math.round(+v).toString(16).padStart(2, "0")).join("").toUpperCase() : NODATA;
+    };
+    // What the popover edits, by layer type: { label, scheme title + colours, get(), base(), set(hex) }
+    function adapter(s, key){
+      if (!isFeat(s)){                                     // a line layer (graduated classes on a colour ramp)
+        const i = key === "nodata" ? -1 : +key, ramp = () => rampColours(s, s.cls.k).map(toHex);
+        const base = () => i < 0 ? NODATA : ramp()[i] || NODATA;
+        return {
+          label: i < 0 ? "No data" : `Class ${i + 1}: ${range(s.cls.breaks, i)}`,
+          schemeTitle: "Ramp colours", scheme: ramp(),
+          get: () => s.sym.custom[key] || base(), base,
+          set(c){ if (c.toUpperCase() === base().toUpperCase()) delete s.sym.custom[key]; else s.sym.custom[key] = c.toUpperCase(); },
+          redraw: false,
+        };
+      }
+      if (key === "*") return {                            // Single Symbol colour
+        label: "Symbol colour", scheme: null,
+        get: () => s.sym.colour, base: () => (s.cfg.defaults && s.cfg.defaults.colour) || FEAT_DEFAULTS.colour,
+        set(c){
+          s.sym.colour = c.toLowerCase();
+          const inp = s.symEl && s.symEl.querySelector('[data-k="colour"]'); if (inp) inp.value = s.sym.colour;
+        },
+        redraw: true,
+      };
+      const cat = () => (s.cats || []).find(c => c.key === key);
+      const base = () => (c => c ? (c.base || c.colour) : NODATA)(cat());
+      return {                                             // a Unique Values class
+        label: (cat() || {}).label || prettyValue(key),
+        schemeTitle: "Scheme colours", scheme: QUAL[s.sym.scheme] ? QUAL[s.sym.scheme].c : null,
+        get: () => (cat() || {}).colour || NODATA, base,
+        set(c){
+          const m = s.sym.custom[s.sym.field] || (s.sym.custom[s.sym.field] = {});
+          if (c.toUpperCase() === base().toUpperCase()) delete m[key]; else m[key] = c.toUpperCase();
+          if (!Object.keys(m).length) delete s.sym.custom[s.sym.field];
+          const k = cat(); if (k) k.colour = c.toUpperCase();    // so the popover shows it before the redraw
+        },
+        redraw: true,
+      };
+    }
+    const current = () => P.a.get(), baseOf = () => P.a.base();
     function sync(){
       const cur = current().toUpperCase();
       el.querySelectorAll("[data-c]").forEach(b => b.classList.toggle("on", b.dataset.c.toUpperCase() === cur));
@@ -10744,16 +10805,8 @@ if (MAP_STANDALONE) (function overlayLayers(){
     }
     function set(c){
       const s = P.s; if (!s || !HEX.test(c)) return;
-      if (P.key === "*"){
-        s.sym.colour = c.toLowerCase();
-        const inp = s.symEl && s.symEl.querySelector('[data-k="colour"]'); if (inp) inp.value = s.sym.colour;
-      } else {
-        const m = s.sym.custom[s.sym.field] || (s.sym.custom[s.sym.field] = {});
-        if (c.toUpperCase() === baseOf().toUpperCase()) delete m[P.key]; else m[P.key] = c.toUpperCase();
-        if (!Object.keys(m).length) delete s.sym.custom[s.sym.field];
-        const k = cat(); if (k) k.colour = c.toUpperCase();      // so the popover shows it before the redraw
-      }
-      save(); schedule(s, true); sync();
+      P.a.set(c);
+      save(); schedule(s, P.a.redraw); sync();
     }
     function place(){
       const r = P.anchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
@@ -10765,12 +10818,12 @@ if (MAP_STANDALONE) (function overlayLayers(){
     }
     function open(s, key, anchor){
       if (!el.hidden && P.s === s && P.key === key){ close(); return; }   // second click on the same symbol
-      Object.assign(P, { s, key, anchor });
-      const c = key === "*" ? null : cat();
-      head.textContent = key === "*" ? "Symbol colour" : (c ? c.label : prettyValue(key));
-      const sc = QUAL[s.sym.scheme];
-      schH.hidden = sch.hidden = key === "*" || !sc;
-      sch.innerHTML = sc ? sc.c.map(cell).join("") : "";
+      const a = adapter(s, key);
+      Object.assign(P, { s, key, anchor, a });
+      head.textContent = a.label;
+      schH.textContent = a.schemeTitle || "";
+      schH.hidden = sch.hidden = !a.scheme;
+      sch.innerHTML = a.scheme ? a.scheme.map(c => cell(c.toUpperCase())).join("") : "";
       el.hidden = false;
       sync(); place();
       (el.querySelector(".on") || el.querySelector("[data-c]")).focus({ preventScroll: true });
@@ -10778,7 +10831,7 @@ if (MAP_STANDALONE) (function overlayLayers(){
     function close(){
       if (el.hidden) return;
       el.hidden = true;
-      const a = P.anchor; Object.assign(P, { s: null, key: null, anchor: null });
+      const a = P.anchor; Object.assign(P, { s: null, key: null, anchor: null, a: null });
       if (a && a.isConnected) a.focus({ preventScroll: true });
     }
     el.addEventListener("click", e => {
