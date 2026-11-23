@@ -1376,6 +1376,28 @@ html.map-standalone .ov-about{margin-top:auto;padding:.1rem .9rem .2rem;border-t
 .ov-cat.off span:not(.n){opacity:.45}
 .ov-swg{display:block;width:18px;height:18px;flex:0 0 18px}
 .ov-map-legend .ov-swg{width:16px;height:16px;flex:0 0 16px}
+/* Class symbol in the settings card: click it to open the colour palette (ArcGIS Pro-style) */
+.ov-swbtn{display:block;width:22px;height:22px;margin:-2px;padding:1px;border:1px solid transparent;border-radius:5px;background:none;cursor:pointer}
+.ov-swbtn:hover,.ov-swbtn:focus-visible,.ov-swbtn.open{border-color:var(--teal);background:#fff;box-shadow:0 0 0 2px rgba(14,140,138,.18);outline:0}
+.ov-swbtn .ov-swg{pointer-events:none}
+.ov-cpop{position:fixed;z-index:5000;width:232px;padding:.6rem .65rem .65rem;background:#fff;border:1px solid var(--grey-border,#d5dbe0);
+  border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.18);font-size:.72rem;color:var(--text-main,#1e2b33)}
+.ov-cpop[hidden]{display:none}
+.ov-cpop-h{display:flex;align-items:center;gap:.4rem;margin:0 0 .45rem;font-weight:700;font-size:.74rem}
+.ov-cpop-h span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-cpop-h button{border:0;background:none;padding:0 .1rem;line-height:1;font-size:.9rem;color:var(--text-muted,#66747f);cursor:pointer}
+.ov-cpop-sub{margin:.45rem 0 .25rem;font-size:.64rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--text-muted,#66747f)}
+.ov-cpop-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:2px}
+.ov-cpop-grid button{aspect-ratio:1;width:100%;padding:0;border:1px solid rgba(0,0,0,.12);border-radius:2px;cursor:pointer}
+.ov-cpop-grid button:hover,.ov-cpop-grid button:focus-visible{outline:2px solid var(--teal,#0E8C8A);outline-offset:1px;position:relative;z-index:1}
+.ov-cpop-grid button.on{outline:2px solid #1e2b33;outline-offset:1px;position:relative;z-index:1}
+.ov-cpop-row{display:flex;align-items:center;gap:.4rem;margin-top:.5rem}
+.ov-cpop-row input[type=color]{width:34px;height:26px;padding:1px 2px;border:1px solid var(--grey-border,#d5dbe0);border-radius:6px;background:#fff;cursor:pointer}
+.ov-cpop-row input[type=text]{width:78px;height:26px;padding:0 .35rem;border:1px solid var(--grey-border,#d5dbe0);border-radius:6px;font:inherit;font-family:ui-monospace,Consolas,monospace;text-transform:uppercase}
+.ov-cpop-row input[type=text].bad{border-color:#c0392b}
+.ov-cpop-reset{margin-left:auto;border:0;background:none;padding:0;font-size:.7rem;font-weight:700;color:var(--teal,#0E8C8A);cursor:pointer}
+.ov-cpop-reset:hover{text-decoration:underline}
+.ov-cpop-reset:disabled{color:var(--text-muted,#66747f);opacity:.5;cursor:default;text-decoration:none}
 .ov-map-legend li.nodata .ov-sw{background:repeating-linear-gradient(90deg,#9AA5AE 0 5px,transparent 5px 8px)}
 
 /* Side panel: a compact accordion stepper (1 dataset, 2 layer, 3 display) */
@@ -10641,6 +10663,14 @@ if (MAP_STANDALONE) (function overlayLayers(){
     o.polyOutlineFill = o.polyOutlineFill !== false;
     o.hidden = Array.isArray(o.hidden) ? o.hidden.filter(x => typeof x === "string") : [];
     if (typeof o.field !== "string") o.field = def.field;
+    // Colours picked for single classes: { field: { class value: "#rrggbb" } }
+    const cu = {};
+    if (o.custom && typeof o.custom === "object") Object.entries(o.custom).forEach(([f, m]) => {
+      if (!m || typeof m !== "object") return;
+      const ok = Object.entries(m).filter(([, v]) => HEX.test(v));
+      if (ok.length) cu[f] = Object.fromEntries(ok);
+    });
+    o.custom = cu;
     return o;
   }
   // A colour of a scheme; past its end the scheme repeats, darker then lighter, so 26 counties stay distinct
@@ -10679,6 +10709,101 @@ if (MAP_STANDALONE) (function overlayLayers(){
       triangle: `<path d="M9 2.5 15.5 14.5 2.5 14.5Z" ${st}/>`, diamond: `<path d="M9 1.5 16.5 9 9 16.5 1.5 9Z" ${st}/>` };
     return `<svg class="ov-swg" viewBox="0 0 18 18" aria-hidden="true">${shapes[sym.shape]}</svg>`;
   }
+
+  // Colour palette popover (ArcGIS Pro-style): opened by clicking a class symbol in the settings card.
+  // Picking a colour recolours that class only (key "*" = the Single Symbol colour); the choice is kept
+  // per field in sym.custom and saved with the layer's symbology. "Reset" returns it to the scheme colour.
+  const colourPick = (() => {
+    const HUES = ["#E60000", "#FF7F00", "#FFD400", "#9BC400", "#38A800", "#00A884", "#00A9E6", "#004DA8", "#8400A8", "#E6007E"];
+    const GREYS = ["#FFFFFF", "#E1E1E1", "#CCCCCC", "#B2B2B2", "#9C9C9C", "#828282", "#686868", "#4E4E4E", "#343434", "#000000"];
+    const PAL = [GREYS, ...[.75, .5, .25, 0, -.3, -.55].map(f => HUES.map(c => f ? shade(c, f).toUpperCase() : c))].flat();
+    const cell = c => `<button type="button" data-c="${c}" style="background:${c}" title="${c}" aria-label="${c}"></button>`;
+    const el = document.createElement("div");
+    el.className = "ov-cpop"; el.hidden = true;
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Class colour");
+    el.innerHTML = `<p class="ov-cpop-h"><span></span><button type="button" data-x aria-label="Close">&times;</button></p>
+      <div class="ov-cpop-sub">Colour palette</div><div class="ov-cpop-grid">${PAL.map(cell).join("")}</div>
+      <div class="ov-cpop-sub" data-sch-h>Scheme colours</div><div class="ov-cpop-grid" data-sch></div>
+      <div class="ov-cpop-row"><input type="color" aria-label="More colours" title="More colours">
+        <input type="text" maxlength="7" spellcheck="false" aria-label="Hex colour" placeholder="#RRGGBB">
+        <button type="button" class="ov-cpop-reset" title="Back to the colour scheme's colour">Reset</button></div>`;
+    document.body.appendChild(el);
+    const head = el.querySelector(".ov-cpop-h span"), sch = el.querySelector("[data-sch]"), schH = el.querySelector("[data-sch-h]");
+    const nat = el.querySelector("input[type=color]"), hex = el.querySelector("input[type=text]"), reset = el.querySelector(".ov-cpop-reset");
+    const P = { s: null, key: null, anchor: null };
+    const cat = () => (P.s.cats || []).find(c => c.key === P.key);
+    const current = () => P.key === "*" ? P.s.sym.colour : (cat() || {}).colour || NODATA;
+    const baseOf = () => P.key === "*" ? ((P.s.cfg.defaults && P.s.cfg.defaults.colour) || FEAT_DEFAULTS.colour)
+      : (c => c ? (c.base || c.colour) : NODATA)(cat());
+    function sync(){
+      const cur = current().toUpperCase();
+      el.querySelectorAll("[data-c]").forEach(b => b.classList.toggle("on", b.dataset.c.toUpperCase() === cur));
+      nat.value = cur.toLowerCase();
+      if (document.activeElement !== hex){ hex.value = cur; hex.classList.remove("bad"); }
+      reset.disabled = cur === baseOf().toUpperCase();
+    }
+    function set(c){
+      const s = P.s; if (!s || !HEX.test(c)) return;
+      if (P.key === "*"){
+        s.sym.colour = c.toLowerCase();
+        const inp = s.symEl && s.symEl.querySelector('[data-k="colour"]'); if (inp) inp.value = s.sym.colour;
+      } else {
+        const m = s.sym.custom[s.sym.field] || (s.sym.custom[s.sym.field] = {});
+        if (c.toUpperCase() === baseOf().toUpperCase()) delete m[P.key]; else m[P.key] = c.toUpperCase();
+        if (!Object.keys(m).length) delete s.sym.custom[s.sym.field];
+        const k = cat(); if (k) k.colour = c.toUpperCase();      // so the popover shows it before the redraw
+      }
+      save(); schedule(s, true); sync();
+    }
+    function place(){
+      const r = P.anchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+      let x = r.left - w - 10;                             // beside the class list, over the map
+      if (x < 8) x = r.right + 10;
+      x = Math.max(8, Math.min(x, innerWidth - w - 8));
+      const y = Math.max(8, Math.min(r.top - 12, innerHeight - h - 8));
+      el.style.left = `${x}px`; el.style.top = `${y}px`;
+    }
+    function open(s, key, anchor){
+      if (!el.hidden && P.s === s && P.key === key){ close(); return; }   // second click on the same symbol
+      Object.assign(P, { s, key, anchor });
+      const c = key === "*" ? null : cat();
+      head.textContent = key === "*" ? "Symbol colour" : (c ? c.label : prettyValue(key));
+      const sc = QUAL[s.sym.scheme];
+      schH.hidden = sch.hidden = key === "*" || !sc;
+      sch.innerHTML = sc ? sc.c.map(cell).join("") : "";
+      el.hidden = false;
+      sync(); place();
+      (el.querySelector(".on") || el.querySelector("[data-c]")).focus({ preventScroll: true });
+    }
+    function close(){
+      if (el.hidden) return;
+      el.hidden = true;
+      const a = P.anchor; Object.assign(P, { s: null, key: null, anchor: null });
+      if (a && a.isConnected) a.focus({ preventScroll: true });
+    }
+    el.addEventListener("click", e => {
+      const b = e.target.closest("[data-c]");
+      if (b){ set(b.dataset.c); return; }
+      if (e.target.closest("[data-x]")) close();
+      else if (e.target === reset){ set(baseOf()); }
+    });
+    nat.addEventListener("input", () => set(nat.value));
+    hex.addEventListener("input", () => {
+      const v = hex.value.trim(), c = v[0] === "#" ? v : `#${v}`;
+      hex.classList.toggle("bad", !HEX.test(c));
+      if (HEX.test(c)) set(c);
+    });
+    hex.addEventListener("blur", sync);
+    el.addEventListener("keydown", e => {
+      if (e.key === "Escape"){ e.stopPropagation(); close(); }
+      else if (e.key === "Enter" && e.target === hex) close();
+    });
+    document.addEventListener("mousedown", e => {
+      if (!el.hidden && !(e.target.closest && e.target.closest(".ov-cpop, [data-catcol]"))) close();
+    }, true);
+    addEventListener("resize", close);
+    return { open, close, get s(){ return P.s; }, get key(){ return P.key; } };
+  })();
 
   // Canvas point marker with an ArcGIS-like shape (Leaflet's circle marker draws circles only)
   if (!L.Canvas.prototype._ovShape){
@@ -10765,6 +10890,8 @@ if (MAP_STANDALONE) (function overlayLayers(){
         const key = t.dataset.k; if (!key) return;
         s.sym[key] = t.type === "checkbox" ? t.checked : t.type === "range" ? +t.value : t.value;
         if (key === "field" || key === "mode") s.sym.hidden = [];
+        if (key === "scheme") delete s.sym.custom[s.sym.field];   // a new scheme recolours every class, as in ArcGIS Pro
+        if (colourPick.s === s && key !== "colour") colourPick.close();
       }
       syncFeatOutputs(s);
       save();
@@ -10772,6 +10899,11 @@ if (MAP_STANDALONE) (function overlayLayers(){
     };
     s.symEl.addEventListener("input", onInput);
     s.symEl.addEventListener("change", e => { if (e.target.type !== "range" && e.target.type !== "color") onInput(e); });
+    s.symEl.addEventListener("click", e => {             // a class symbol: open the colour palette
+      const sw = e.target.closest("[data-catcol]"); if (!sw) return;
+      e.preventDefault(); e.stopPropagation();             // not a tick of the class's checkbox
+      colourPick.open(s, sw.dataset.catcol, sw);
+    });
     s.symEl.addEventListener("click", e => {             // "All" / "None" above the class list
       const act = e.target.closest("[data-act]")?.dataset.act; if (!act || !s.cats) return;
       s.sym.hidden = act === "none" ? s.cats.map(c => c.key) : [];
@@ -10830,6 +10962,8 @@ if (MAP_STANDALONE) (function overlayLayers(){
       .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
     order.forEach((c, j) => { c.colour = schemeColour(s.sym.scheme, j); });   // national ranks: colours stay put across counties
     if (f.missing) order.push({ i: -1, key: "", label: "Not recorded", n: f.missing, colour: NODATA });
+    const cu = s.sym.custom[s.sym.field];                          // colours the user picked for single classes
+    order.forEach(c => { c.base = c.colour; if (cu && cu[c.key]) c.colour = cu[c.key]; });
     const cof = areaOf(s);
     if (!cof) return order;
     const col = s.data.attrs[s.sym.field], n = new Map();          // a county: its own counts, empty classes left out
@@ -10886,7 +11020,8 @@ if (MAP_STANDALONE) (function overlayLayers(){
           ${unique ? `<span><button type="button" data-act="all">All</button><button type="button" data-act="none">None</button></span>` : ""}</div>
         <ul class="ov-cats">${rows.map(r => `<li><label class="ov-cat${r.on ? "" : " off"}">${unique
             ? `<input type="checkbox" data-cat="${esc(r.key)}"${r.on ? " checked" : ""} aria-label="Show ${esc(r.label)}">` : "<span></span>"}
-          ${swatch(s, r.colour)}<span>${esc(r.label)}</span><span class="n">${r.n.toLocaleString("en-IE")}</span></label></li>`).join("")}</ul>
+          <button type="button" class="ov-swbtn" data-catcol="${esc(r.key)}" title="Change the colour of ${esc(r.label)}"
+            aria-label="Change the colour of ${esc(r.label)}" aria-haspopup="dialog">${swatch(s, r.colour)}</button><span>${esc(r.label)}</span><span class="n">${r.n.toLocaleString("en-IE")}</span></label></li>`).join("")}</ul>
         ${unique ? `<p class="ov-note">${fmt(shown)} of ${fmt(total)} features shown${esc(where)}${county ? ` (${fmt(s.data.n)} in Ireland)` : ""}.</p>`
           : county ? `<p class="ov-note">${fmt(total)} of ${fmt(s.data.n)} features are${esc(where)}.</p>` : ""}`;
     }
